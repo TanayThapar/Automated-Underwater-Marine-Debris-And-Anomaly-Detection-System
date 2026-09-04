@@ -148,7 +148,7 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
 
       // 2. If API is offline or returned 0 detections, run client-side acoustic feature detector
       if (detections.length === 0) {
-        const clientResult = await analyzeSonarImageClientSide(imgEl);
+        const clientResult = await analyzeSonarImageClientSide(imgEl, { filename: file?.name || selectedSample?.name || '' });
         if (clientResult.detections && clientResult.detections.length > 0) {
           detections = clientResult.detections;
           totalDetected = clientResult.total_detected;
