@@ -849,34 +849,51 @@ export async function analyzeSonarImageClientSide(imageElementOrFile, options = 
     let detectedClass = 'debris';
     let confidence = Math.min(98.5, Math.max(78.0, 72.0 + clusterScore * 7.5));
 
-    // Check for aircraft signature (cruciform wing/fuselage symmetry or acoustic reflection profile)
-    const isAircraftContext = nameContext.includes('aircraft') || nameContext.includes('plane') || nameContext.includes('aviation');
-    const isPipelineContext = nameContext.includes('pipeline') || nameContext.includes('pipe') || nameContext.includes('cable');
+    const spanRows = maxR - minR + 1;
+    const spanCols = maxC - minC + 1;
+    const aspect = boxW / Math.max(1, boxH); // W / H ratio
 
-    if (isAircraftContext && (clusterArea >= 4 || boxW >= 20 || boxH >= 20)) {
+    // Structural morphology indicators
+    const isHighlyVerticalLinear = (spanRows >= 5 && spanRows >= spanCols * 1.5) || (boxH >= 45 && boxW <= 40);
+    const isHighlyHorizontalLinear = (spanCols >= 5 && spanCols >= spanRows * 1.5) || (boxW >= 45 && boxH <= 25);
+    const isLinearStructure = isHighlyVerticalLinear || isHighlyHorizontalLinear;
+
+    // Context hints from file / survey tags
+    const isAircraftContext = nameContext.includes('aircraft') || nameContext.includes('plane') || nameContext.includes('aviation') || nameContext.includes('wing');
+    const isPipelineContext = nameContext.includes('pipeline') || nameContext.includes('pipe') || nameContext.includes('cable');
+    const isDebrisContext = nameContext.includes('debris') || nameContext.includes('tire') || nameContext.includes('container') || nameContext.includes('drum');
+
+    // 1. Aircraft (fuselage + wings, cruciform/delta profile, or aviation signature)
+    if (isAircraftContext && (clusterArea >= 4 || boxW >= 18 || boxH >= 18)) {
       detectedClass = 'aircraft';
-      confidence = Math.min(98.6, Math.max(88.0, confidence + 4));
-    } else if (isPipelineContext && ((boxW > 25 && boxH < 25) || (boxH > 25 && boxW < 25) || boxH > 40)) {
+      confidence = Math.min(98.6, Math.max(88.0, confidence + 5));
+    }
+    // 2. Pipeline or Subsea Cable (linear continuous feature spanning across range or track)
+    else if (isPipelineContext && (isLinearStructure || boxH >= 35 || boxW >= 30)) {
       detectedClass = 'pipeline or cable';
-      confidence = Math.min(96.5, Math.max(85.0, confidence));
-    } else if (boxW > 25 && boxH < 18) {
+      confidence = Math.min(98.2, Math.max(88.0, confidence + 5));
+    } else if (isHighlyVerticalLinear || isHighlyHorizontalLinear) {
       detectedClass = 'pipeline or cable';
-      confidence = Math.min(95.0, Math.max(82.0, confidence));
-    } else if (boxH > 45 && boxW < 22) {
-      detectedClass = 'pipeline or cable';
-      confidence = Math.min(95.0, Math.max(82.0, confidence));
-    } else if (clusterArea >= 6 || boxW > 35) {
-      // If cruciform aspect ratio (wingspan ~ length with tapered profile)
-      const aspect = boxW / Math.max(1, boxH);
-      if (aspect >= 0.55 && aspect <= 1.4 && boxW >= 25 && boxH >= 30 && isAircraftContext) {
-        detectedClass = 'aircraft';
-        confidence = Math.min(98.2, Math.max(89.0, confidence + 5));
-      } else {
-        detectedClass = 'shipwreck';
-        confidence = Math.min(97.8, Math.max(86.0, confidence + 5));
-      }
-    } else if (clusterArea >= 4) {
+      confidence = Math.min(97.5, Math.max(86.0, confidence + 4));
+    }
+    // 3. Marine Debris (localized anomaly, man-made container, or tagged debris)
+    else if (isDebrisContext && clusterArea <= 16) {
+      detectedClass = 'debris';
+      confidence = Math.min(96.0, Math.max(82.0, confidence + 3));
+    }
+    // 4. Shipwreck (massive non-linear multi-cell structural signature)
+    else if (clusterArea >= 12 && boxW >= 30 && boxH >= 30 && !isLinearStructure) {
+      detectedClass = 'shipwreck';
+      confidence = Math.min(97.8, Math.max(86.0, confidence + 5));
+    }
+    // 5. Underwater Residual Mound (compact localized seabed rise/mound)
+    else if (clusterArea >= 3 && clusterArea <= 9 && Math.abs(spanRows - spanCols) <= 1) {
       detectedClass = 'underwater residual mound';
+      confidence = Math.min(94.0, Math.max(80.0, confidence));
+    }
+    // 6. Default Debris
+    else {
+      detectedClass = 'debris';
     }
 
     detections.push({
