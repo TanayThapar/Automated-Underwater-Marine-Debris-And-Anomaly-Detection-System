@@ -313,6 +313,10 @@ export function drawSonarCanvas(canvas, sample, options = {}) {
   ctx.fillStyle = '#050a14';
   ctx.fillRect(0, 0, width, height);
 
+  // Declare nadirCenterX in outer scope so the nadir overlay (after the if/else)
+  // can always reference it regardless of which rendering path runs.
+  const nadirCenterX = width / 2;
+
   const realImg = sample?.imageElement || (sample?.imageSrc && sample._cachedImg);
 
   if (sample?.imageSrc && !sample.imageElement && !sample._cachedImg && !sample._loadingImg) {
@@ -413,7 +417,7 @@ export function drawSonarCanvas(canvas, sample, options = {}) {
     const data = imgData.data;
 
     const nadirWidth = filterMode === 'nadir_removed' ? 6 : (width * 0.12);
-    const nadirCenterX = width / 2;
+    // nadirCenterX is declared in outer scope above
 
     // Random per-render seed offset so repeated draws don't look identical
     const seedX = Math.random() * 1000;
