@@ -32,7 +32,12 @@ export default function GeospatialMapView({ onSelectSampleForStudio }) {
         zoomControl: true,
       });
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      const cartoKey = import.meta.env.VITE_CARTO_API_KEY || 'cb1_2w1m_1_a6e11bc030554617b5eccdc3';
+      const tileUrl = cartoKey
+        ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${cartoKey}`
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+      L.tileLayer(tileUrl, {
         attribution: '&copy; CARTO & OpenStreetMap',
         maxZoom: 18,
       }).addTo(map);
