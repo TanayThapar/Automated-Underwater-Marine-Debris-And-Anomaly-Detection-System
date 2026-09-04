@@ -84,46 +84,41 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Fast local preview while inference runs
+    // Reset so the same file can be re-uploaded if needed
+    e.target.value = '';
+
+    // Set a neutral placeholder — no fake detections, no fake scores
     const customSample = {
       id: `custom-${Date.now()}`,
       name: file.name.replace(/\.[^/.]+$/, ""),
       category: 'Uploaded Hydrographic Scan',
-      riskLevel: backendStatus === 'online' ? 'ANALYZING' : 'HIGH',
-      riskScore: 88,
+      riskLevel: backendStatus === 'online' ? 'ANALYZING' : 'PENDING',
+      riskScore: 0,
       depth: 36.0,
       altitude: customAltitude,
       coordinates: { lat: 15.3, lng: 73.8, location: 'Custom Survey Scan' },
-      description: 'Uploaded user sonar recording processed through real-time DSP filter pipeline.',
-      dimensions: { length: '12.0 m', width: '4.5 m', estHeight: '1.8 m' },
+      description: 'Uploaded user sonar recording. Running DSP filter pipeline and AI detection...',
+      dimensions: { length: '—', width: '—', estHeight: '—' },
       slantRange: customSlantRange,
       shadowLength: customShadowLength,
-      anomalyConfidence: 0.94,
-      cleanPriority: backendStatus === 'online' ? 'Running YOLO Detection...' : 'P1 - High Priority',
+      anomalyConfidence: 0,
+      cleanPriority: backendStatus === 'online' ? 'Running YOLO Detection...' : 'Awaiting inference',
       timestamp: new Date().toISOString(),
-      detections: [
-        {
-          id: 'det-custom',
-          label: 'Acoustic Anomaly',
-          confidence: 0.94,
-          type: 'debris',
-          box: { x: 35, y: 30, w: 30, h: 25 },
-          highlight: { x: 37, y: 32, w: 26, h: 10 },
-          shadow: { x: 37, y: 42, w: 26, h: 13 },
-          estHeight: '1.8 m',
-          material: 'Synthetic Anomaly',
-          acousticReflectivity: 'High Specular Scatter'
-        }
-      ],
-      anomalyZones: [{ x: 48, y: 42, radius: 60, intensity: 0.92 }],
+      detections: [],
+      anomalyZones: [],
       sonarParams: { frequency: '450 kHz', pingRate: '15 Hz', swathWidth: `${customSlantRange * 2} m`, soundSpeed: '1500 m/s' }
     };
     setSelectedSample(customSample);
     setAnalysisResult(null);
     setApiError(null);
 
-    // If backend is offline, proceed with client-side simulated DSP
+    // If backend is offline, stay in the neutral state — no fake data
     if (backendStatus === 'offline') {
+      setSelectedSample((prev) => ({
+        ...prev,
+        riskLevel: 'OFFLINE',
+        cleanPriority: 'Backend offline — connect API for real inference',
+      }));
       return;
     }
 
@@ -146,6 +141,7 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
           coordinates: { lat: topDet.latitude, lng: topDet.longitude, location: 'AI-Geotagged Anomaly' },
           anomalyConfidence: topDet.confidence / 100,
           cleanPriority: `P1 – ${result.total_detected} Object(s) Identified`,
+          description: `AI pipeline detected ${result.total_detected} anomaly(ies) in this sonar scan.`,
           detections: result.detections.map((d, i) => ({
             id: d.id,
             label: d.class,
@@ -164,12 +160,20 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
           ...prev,
           riskLevel: 'CLEAR',
           riskScore: 0,
-          cleanPriority: 'No acoustic hazards detected'
+          anomalyConfidence: 0,
+          cleanPriority: 'No acoustic hazards detected',
+          description: 'AI pipeline completed — no anomalies found above confidence threshold.',
+          detections: [],
         }));
       }
     } catch (err) {
       console.warn('Backend analysis error:', err);
       setApiError(err.message || 'Analysis failed');
+      setSelectedSample((prev) => ({
+        ...prev,
+        riskLevel: 'ERROR',
+        cleanPriority: 'Analysis error — check API connection',
+      }));
     } finally {
       setIsAnalyzing(false);
     }
@@ -211,7 +215,7 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {analysisResult && (
+            {analysisResult && analysisResult.total_detected > 0 && (
               <button
                 onClick={downloadLastReportCSV}
                 className="flex items-center gap-1 px-2.5 py-1 bg-emerald-900 hover:bg-emerald-800 border border-emerald-600 text-emerald-200 rounded text-xs font-semibold cursor-pointer transition-colors"
@@ -555,33 +559,47 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
             <div className="space-y-1.5 pt-2 border-t border-gray-800 text-xs">
               <span className="text-xs font-bold text-gray-400 block font-sans">AI Perception Confidence</span>
               
-              <div className="space-y-2">
-                <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
-                  <div className="flex justify-between mb-1 text-xs">
-                    <span className="text-gray-400">YOLO-11 Dual Detector</span>
-                    <span className="text-white font-bold font-mono">{(selectedSample?.detections[0]?.confidence * 100).toFixed(1)}%</span>
+              {selectedSample?.detections?.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
+                    <div className="flex justify-between mb-1 text-xs">
+                      <span className="text-gray-400">YOLO-11 Dual Detector</span>
+                      <span className="text-white font-bold font-mono">
+                        {((selectedSample.detections[0].confidence ?? 0) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-900 h-1.5 rounded overflow-hidden">
+                      <div 
+                        style={{ width: `${(selectedSample.detections[0].confidence ?? 0) * 100}%` }}
+                        className="bg-white h-full" 
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-900 h-1.5 rounded overflow-hidden">
-                    <div 
-                      style={{ width: `${selectedSample?.detections[0]?.confidence * 100}%` }}
-                      className="bg-white h-full" 
-                    />
-                  </div>
-                </div>
 
-                <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
-                  <div className="flex justify-between mb-1 text-xs">
-                    <span className="text-gray-400">PatchCore Anomaly Engine</span>
-                    <span className="text-amber-400 font-bold font-mono">{(selectedSample?.anomalyConfidence * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-900 h-1.5 rounded overflow-hidden">
-                    <div 
-                      style={{ width: `${selectedSample?.anomalyConfidence * 100}%` }}
-                      className="bg-amber-500 h-full" 
-                    />
+                  <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
+                    <div className="flex justify-between mb-1 text-xs">
+                      <span className="text-gray-400">PatchCore Anomaly Engine</span>
+                      <span className="text-amber-400 font-bold font-mono">
+                        {((selectedSample.anomalyConfidence ?? 0) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-900 h-1.5 rounded overflow-hidden">
+                      <div 
+                        style={{ width: `${(selectedSample.anomalyConfidence ?? 0) * 100}%` }}
+                        className="bg-amber-500 h-full" 
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-2.5 bg-[#0b0f17] rounded border border-gray-800 text-center text-gray-600 font-mono text-[11px]">
+                  {isAnalyzing ? (
+                    <span className="text-cyan-500 animate-pulse">Running inference...</span>
+                  ) : (
+                    <span>No detections — upload a scan or select a preset</span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="p-2.5 bg-[#0b0f17] border border-gray-800 rounded text-xs text-gray-300">
