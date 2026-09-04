@@ -134,12 +134,24 @@ function paintDSP(canvas, kin, frame, metrics, target, scroll) {
   ctx.drawImage(canvas, 0, 0, W, H - scroll, 0, scroll, W, H - scroll);
 
   const nadirX = W / 2;
-  const nadirW = W * 0.09;
+  const nadirW = W * 0.09; // heave-induced nadir wobble is fully corrected out here
   const targetX = target.x * W;
 
+  // DSP compensation: pitch shear and roll gain asymmetry are corrected
+  // down to a small residual (~8%) rather than eliminated outright, so the
+  // "compensated" panel still visibly (if subtly) reacts to aggressive
+  // vehicle motion instead of looking identical no matter what the
+  // kinematics sliders are set to.
+  const RESIDUAL = 0.08;
+  const pitchPx = Math.tan(kin.pitch * Math.PI / 180) * 5.8 * RESIDUAL;
+  const rollGainL = 1.0 + Math.sin(kin.roll * Math.PI / 180) * 0.50 * RESIDUAL;
+  const rollGainR = 1.0 - Math.sin(kin.roll * Math.PI / 180) * 0.50 * RESIDUAL;
+
   for (let dy = 0; dy < scroll; dy++) {
+    const shift = pitchPx * dy;
     for (let x = 0; x < W; x += 2) {
-      const dist = Math.abs(x - nadirX);
+      const sx = x - shift;
+      const dist = Math.abs(sx - nadirX);
       let v;
       if (dist < nadirW / 2) {
         v = 10 + Math.random() * 8;
@@ -149,11 +161,12 @@ function paintDSP(canvas, kin, frame, metrics, target, scroll) {
         const slantCorr = 1.0 + norm * 0.15;
         const ripple = Math.sin(frame * 0.05 + x * 0.025) * 4;
         const speckle = (Math.random() - 0.5) * 10;
-        v = 78 * graze * slantCorr + ripple + speckle;
+        const gain = sx < nadirX ? rollGainL : rollGainR;
+        v = 78 * graze * slantCorr * gain + ripple + speckle;
       }
 
       if (target.active && target.age <= target.h) {
-        const dxT = Math.abs(x - targetX);
+        const dxT = Math.abs(sx - targetX);
         if (dxT < 13) v = 200 + Math.random() * 30;
         else if (dxT < 24) v = 4 + Math.random() * 6;
       }
