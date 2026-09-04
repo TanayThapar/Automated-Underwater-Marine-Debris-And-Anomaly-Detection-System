@@ -302,8 +302,11 @@ export function drawSonarCanvas(canvas, sample, options = {}) {
   // re-validating per-pixel in the hot loop below. Both the background
   // pass and the box/label overlay use this resolved list so what's drawn
   // always matches what's physically checked.
-  const resolvedDetections = (sample && sample.detections)
-    ? sample.detections.map(det => resolveDetectionGeometry(det, 50))
+  const resolvedDetections = (sample && Array.isArray(sample.detections))
+    ? sample.detections
+        .filter(det => det && typeof det === 'object')
+        .map(det => resolveDetectionGeometry(det, 50))
+        .filter(Boolean)
     : null;
 
   // Background base
@@ -312,13 +315,20 @@ export function drawSonarCanvas(canvas, sample, options = {}) {
 
   const realImg = sample?.imageElement || (sample?.imageSrc && sample._cachedImg);
 
-  if (sample?.imageSrc && !sample.imageElement && !sample._cachedImg) {
-    // Lazily load image and trigger redraw once ready
+  if (sample?.imageSrc && !sample.imageElement && !sample._cachedImg && !sample._loadingImg) {
+    sample._loadingImg = true;
     const imgLoader = new Image();
-    imgLoader.crossOrigin = 'anonymous';
     imgLoader.onload = () => {
       sample._cachedImg = imgLoader;
-      drawSonarCanvas(canvas, sample, options);
+      sample._loadingImg = false;
+      try {
+        drawSonarCanvas(canvas, sample, options);
+      } catch (err) {
+        console.warn('Redraw error after image load:', err);
+      }
+    };
+    imgLoader.onerror = () => {
+      sample._loadingImg = false;
     };
     imgLoader.src = sample.imageSrc;
   }
@@ -583,10 +593,12 @@ export function drawSonarCanvas(canvas, sample, options = {}) {
   // Draw AI Supervised Bounding Boxes & Dual Highlight-Shadow Cues
   if (showBBoxes && resolvedDetections) {
     resolvedDetections.forEach(det => {
-      const bx = (det.box.x / 100) * width;
-      const by = (det.box.y / 100) * height;
-      const bw = (det.box.w / 100) * width;
-      const bh = (det.box.h / 100) * height;
+      if (!det || !det.box) return;
+
+      const bx = ((det.box.x ?? 30) / 100) * width;
+      const by = ((det.box.y ?? 30) / 100) * height;
+      const bw = ((det.box.w ?? 25) / 100) * width;
+      const bh = ((det.box.h ?? 20) / 100) * height;
 
       // 1. Overall Bounding Box (Cyan Glow)
       ctx.strokeStyle = '#00F0FF';
@@ -595,18 +607,20 @@ export function drawSonarCanvas(canvas, sample, options = {}) {
       ctx.strokeRect(bx, by, bw, bh);
 
       // Label badge
+      const conf = typeof det.confidence === 'number' ? (det.confidence * 100).toFixed(0) : '85';
+      const labelText = `${det.label || 'DEBRIS'} [${conf}%]`;
       ctx.fillStyle = 'rgba(0, 240, 255, 0.95)';
       ctx.fillRect(bx, by - 22, Math.max(160, bw), 22);
       ctx.fillStyle = '#030712';
       ctx.font = 'bold 11px ui-monospace, SFMono-Regular, monospace';
-      ctx.fillText(`${det.label} [${(det.confidence * 100).toFixed(0)}%]`, bx + 6, by - 6);
+      ctx.fillText(labelText, bx + 6, by - 6);
 
       // 2. Highlight Box (Acoustic Bright Echo - Emerald)
       if (showHighlights && det.highlight) {
-        const hx = (det.highlight.x / 100) * width;
-        const hy = (det.highlight.y / 100) * height;
-        const hw = (det.highlight.w / 100) * width;
-        const hh = (det.highlight.h / 100) * height;
+        const hx = ((det.highlight.x ?? bx) / 100) * width;
+        const hy = ((det.highlight.y ?? by) / 100) * height;
+        const hw = ((det.highlight.w ?? (bw * 0.8)) / 100) * width;
+        const hh = ((det.highlight.h ?? (bh * 0.5)) / 100) * height;
 
         ctx.strokeStyle = '#10B981';
         ctx.lineWidth = 1.5;
@@ -620,10 +634,10 @@ export function drawSonarCanvas(canvas, sample, options = {}) {
 
       // 3. Shadow Box (Acoustic Blind Shadow - Amber)
       if (showShadows && det.shadow) {
-        const sx = (det.shadow.x / 100) * width;
-        const sy = (det.shadow.y / 100) * height;
-        const sw = (det.shadow.w / 100) * width;
-        const sh = (det.shadow.h / 100) * height;
+        const sx = ((det.shadow.x ?? bx) / 100) * width;
+        const sy = ((det.shadow.y ?? (by + bh * 0.5)) / 100) * height;
+        const sw = ((det.shadow.w ?? (bw * 0.8)) / 100) * width;
+        const sh = ((det.shadow.h ?? (bh * 0.5)) / 100) * height;
 
         ctx.strokeStyle = '#F59E0B';
         ctx.lineWidth = 1.5;
@@ -632,7 +646,7 @@ export function drawSonarCanvas(canvas, sample, options = {}) {
 
         ctx.fillStyle = '#F59E0B';
         ctx.font = '9px ui-monospace, SFMono-Regular, monospace';
-        ctx.fillText(`▲ SHADOW (${det.estHeight})`, sx + 4, sy + 14);
+        ctx.fillText(`▲ SHADOW (${det.estHeight || '—'})`, sx + 4, sy + 14);
       }
     });
   }

@@ -593,39 +593,46 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
             <div className="space-y-1.5 pt-2 border-t border-gray-800 text-xs">
               <span className="text-xs font-bold text-gray-400 block font-sans">AI Perception Confidence</span>
               
-              {selectedSample?.detections?.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
-                    <div className="flex justify-between mb-1 text-xs">
-                      <span className="text-gray-400">YOLO-11 Dual Detector</span>
-                      <span className="text-white font-bold font-mono">
-                        {((selectedSample.detections[0].confidence ?? 0) * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-900 h-1.5 rounded overflow-hidden">
-                      <div 
-                        style={{ width: `${(selectedSample.detections[0].confidence ?? 0) * 100}%` }}
-                        className="bg-white h-full" 
-                      />
-                    </div>
-                  </div>
+              {selectedSample?.detections?.length > 0 ? (() => {
+                const rawConf = selectedSample.detections[0]?.confidence ?? 0;
+                const normConf = rawConf <= 1 ? rawConf * 100 : rawConf;
+                const rawAnom = selectedSample.anomalyConfidence ?? 0;
+                const normAnom = rawAnom <= 1 ? rawAnom * 100 : rawAnom;
 
-                  <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
-                    <div className="flex justify-between mb-1 text-xs">
-                      <span className="text-gray-400">PatchCore Anomaly Engine</span>
-                      <span className="text-amber-400 font-bold font-mono">
-                        {((selectedSample.anomalyConfidence ?? 0) * 100).toFixed(1)}%
-                      </span>
+                return (
+                  <div className="space-y-2">
+                    <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
+                      <div className="flex justify-between mb-1 text-xs">
+                        <span className="text-gray-400">YOLO-11 Dual Detector</span>
+                        <span className="text-white font-bold font-mono">
+                          {normConf.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-900 h-1.5 rounded overflow-hidden">
+                        <div 
+                          style={{ width: `${Math.min(100, Math.max(0, normConf))}%` }}
+                          className="bg-white h-full" 
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-900 h-1.5 rounded overflow-hidden">
-                      <div 
-                        style={{ width: `${(selectedSample.anomalyConfidence ?? 0) * 100}%` }}
-                        className="bg-amber-500 h-full" 
-                      />
+
+                    <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
+                      <div className="flex justify-between mb-1 text-xs">
+                        <span className="text-gray-400">PatchCore Anomaly Engine</span>
+                        <span className="text-amber-400 font-bold font-mono">
+                          {normAnom.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-900 h-1.5 rounded overflow-hidden">
+                        <div 
+                          style={{ width: `${Math.min(100, Math.max(0, normAnom))}%` }}
+                          className="bg-amber-500 h-full" 
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
+                );
+              })() : (
                 <div className="p-2.5 bg-[#0b0f17] rounded border border-gray-800 text-center text-gray-600 font-mono text-[11px]">
                   {isAnalyzing ? (
                     <span className="text-cyan-500 animate-pulse">Running inference...</span>
