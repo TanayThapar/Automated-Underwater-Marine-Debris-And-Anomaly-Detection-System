@@ -63,6 +63,7 @@ At the class level, the detector distinguishes the following anomaly categories:
 
 - Manual review of hydrographic sonar footage can require tens of hours per survey. The trained detector executes in approximately **2 ms per image** on CPU, enabling near-real-time triage during the mission itself rather than in post-processing.
 - The system prioritizes the highest-hazard classes — ghost nets and shipwrecks — by attaching a confidence score to every detection, allowing cleanup and navigation teams to act on the most critical targets first.
+- We trained and validated our ghost-net detector using stratified 3-fold cross-validation on a limited annotated dataset (90 images, 46 positive samples), achieving a mean mAP50 of 0.47. Rather than reporting a single train/test split — which can misleadingly overstate performance depending on which images land in the test set — we used cross-validation specifically to surface this variance (σ=0.195) and give an estimate of real-world generalization. Our best fold reached 0.657 mAP50, and we've identified dataset size as the primary lever for improvement, which directly motivates our synthetic data augmentation pipeline."
 
 ### 3.2 Innovation and Distinguishing Characteristics
 
@@ -200,12 +201,10 @@ The detection and classification models were validated against three independent
 ### 7.1 Known Limitations
 
 Consistent with the project's emphasis on transparent reporting, the following limitations are explicitly acknowledged rather than obscured:
-
 - **Shipwreck detection** was evaluated on only four unique images in the AI4Shipwreck split, implying a non-trivial risk of high variance in the reported metric.
 - The Marine Pulse classification model, at 44.8 MB, is approximately seven times larger than the primary detector, and its inference latency on target embedded hardware (e.g., Jetson-class devices) has not yet been benchmarked.
 - No hardware-in-the-loop testing has yet been conducted on the intended target embedded platform.
 
-> **Note:** Ghost-net detection was previously the weakest-performing category (mAP50 ≈ 0.08) due to class imbalance and limited training epochs. This has since been resolved through extended, class-weighted training and expanded labeled ghost-net imagery.
 
 ### 7.2 Planned Mitigations
 
