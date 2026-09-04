@@ -1,37 +1,25 @@
 {
-  "name": "sih-sonar-debris-system",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "automated-underwater-marine-debris-and-anomaly-detection-system",
+  "version": "1.0.0",
+  "description": "AI-Powered Side-Scan Sonar Marine Debris & Anomaly Detection System (SIH 2026)",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "start:backend": "cd backend && python fastapi_server.py",
+    "start:streamlit": "cd backend && streamlit run app.py",
+    "test:backend": "cd backend && pytest tests",
+    "install:all": "npm --prefix frontend install && pip install -r backend/requirements.txt"
   },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "autoprefixer": "^10.5.4",
-    "canvas-confetti": "^1.9.4",
-    "chart.js": "^4.5.1",
-    "clsx": "^2.1.1",
-    "framer-motion": "^13.1.1",
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.8",
-    "leaflet": "^1.9.4",
-    "lucide-react": "^1.34.0",
-    "postcss": "^8.5.26",
-    "react": "^19.2.8",
-    "react-chartjs-2": "^5.3.1",
-    "react-dom": "^19.2.8",
-    "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.3.3"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.1.0",
-    "oxlint": "^1.79.0",
-    "vite": "^8.2.2"
-  }
+  "keywords": [
+    "side-scan-sonar",
+    "marine-debris",
+    "auv",
+    "yolo",
+    "fastapi",
+    "react",
+    "sih2026"
+  ],
+  "author": "",
+  "license": "MIT"
 }

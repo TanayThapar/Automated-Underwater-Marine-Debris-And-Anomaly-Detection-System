@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sliders, Layers, UploadCloud, Ruler, Crosshair, CheckCircle2, 
-  Columns, Box, Eye, Info
+  Columns, Box, Eye, Info, Wifi, WifiOff, Download, Loader2
 } from 'lucide-react';
 import { PRESET_SAMPLES, SONAR_PALETTES } from '../data/sonarSamples';
 import { drawSonarCanvas, calculateObjectHeight, calculateGroundRange } from '../utils/sonarProcessor';
+import { analyzeSonarImage, checkHealth, downloadLastReportCSV } from '../utils/api';
+
 
 export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
   const canvasRef = useRef(null);
@@ -23,6 +25,19 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
   const [customSlantRange, setCustomSlantRange] = useState(selectedSample?.slantRange || 25);
   const [customShadowLength, setCustomShadowLength] = useState(selectedSample?.shadowLength || 5.5);
 
+  // Backend Integration State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'online' | 'offline' | 'checking'
+  const [apiError, setApiError] = useState(null);
+
+  // Probe FastAPI Backend Health on Mount
+  useEffect(() => {
+    checkHealth()
+      .then((h) => setBackendStatus(h.status === 'ok' ? 'online' : 'offline'))
+      .catch(() => setBackendStatus('offline'));
+  }, []);
+
   useEffect(() => {
     if (selectedSample) {
       setCustomAltitude(selectedSample.altitude);
@@ -30,6 +45,7 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
       setCustomShadowLength(selectedSample.shadowLength);
     }
   }, [selectedSample]);
+
 
   // Main Enhanced Canvas
   useEffect(() => {
@@ -64,43 +80,98 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
   const computedHeight = calculateObjectHeight(customShadowLength, customAltitude, customSlantRange);
   const computedGroundRange = calculateGroundRange(customSlantRange, customAltitude);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const customSample = {
-        id: `custom-${Date.now()}`,
-        name: file.name.replace(/\.[^/.]+$/, ""),
-        category: 'Uploaded Hydrographic Scan',
-        riskLevel: 'HIGH',
-        riskScore: 88,
-        depth: 36.0,
-        altitude: 12.0,
-        coordinates: { lat: 15.3, lng: 73.8, location: 'Custom Survey Scan' },
-        description: 'Uploaded user sonar recording processed through real-time DSP filter pipeline.',
-        dimensions: { length: '12.0 m', width: '4.5 m', estHeight: '1.8 m' },
-        slantRange: 22.0,
-        shadowLength: 4.2,
-        anomalyConfidence: 0.94,
-        cleanPriority: 'P1 - High Priority',
-        timestamp: new Date().toISOString(),
-        detections: [
-          {
-            id: 'det-custom',
-            label: 'Acoustic Anomaly',
-            confidence: 0.94,
-            type: 'debris',
-            box: { x: 35, y: 30, w: 30, h: 25 },
-            highlight: { x: 37, y: 32, w: 26, h: 10 },
-            shadow: { x: 37, y: 42, w: 26, h: 13 },
-            estHeight: '1.8 m',
-            material: 'Synthetic Anomaly',
-            acousticReflectivity: 'High Specular Scatter'
-          }
-        ],
-        anomalyZones: [{ x: 48, y: 42, radius: 60, intensity: 0.92 }],
-        sonarParams: { frequency: '450 kHz', pingRate: '15 Hz', swathWidth: '100 m', soundSpeed: '1500 m/s' }
-      };
-      setSelectedSample(customSample);
+    if (!file) return;
+
+    // Fast local preview while inference runs
+    const customSample = {
+      id: `custom-${Date.now()}`,
+      name: file.name.replace(/\.[^/.]+$/, ""),
+      category: 'Uploaded Hydrographic Scan',
+      riskLevel: backendStatus === 'online' ? 'ANALYZING' : 'HIGH',
+      riskScore: 88,
+      depth: 36.0,
+      altitude: customAltitude,
+      coordinates: { lat: 15.3, lng: 73.8, location: 'Custom Survey Scan' },
+      description: 'Uploaded user sonar recording processed through real-time DSP filter pipeline.',
+      dimensions: { length: '12.0 m', width: '4.5 m', estHeight: '1.8 m' },
+      slantRange: customSlantRange,
+      shadowLength: customShadowLength,
+      anomalyConfidence: 0.94,
+      cleanPriority: backendStatus === 'online' ? 'Running YOLO Detection...' : 'P1 - High Priority',
+      timestamp: new Date().toISOString(),
+      detections: [
+        {
+          id: 'det-custom',
+          label: 'Acoustic Anomaly',
+          confidence: 0.94,
+          type: 'debris',
+          box: { x: 35, y: 30, w: 30, h: 25 },
+          highlight: { x: 37, y: 32, w: 26, h: 10 },
+          shadow: { x: 37, y: 42, w: 26, h: 13 },
+          estHeight: '1.8 m',
+          material: 'Synthetic Anomaly',
+          acousticReflectivity: 'High Specular Scatter'
+        }
+      ],
+      anomalyZones: [{ x: 48, y: 42, radius: 60, intensity: 0.92 }],
+      sonarParams: { frequency: '450 kHz', pingRate: '15 Hz', swathWidth: `${customSlantRange * 2} m`, soundSpeed: '1500 m/s' }
+    };
+    setSelectedSample(customSample);
+    setAnalysisResult(null);
+    setApiError(null);
+
+    // If backend is offline, proceed with client-side simulated DSP
+    if (backendStatus === 'offline') {
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const result = await analyzeSonarImage(file, {
+        lat: 15.3,
+        lon: 73.8,
+        heading: 0.0,
+        swathWidth: customSlantRange * 2,
+      });
+      setAnalysisResult(result);
+
+      if (result.detections && result.detections.length > 0) {
+        const topDet = result.detections[0];
+        setSelectedSample((prev) => ({
+          ...prev,
+          riskLevel: 'HIGH',
+          riskScore: Math.round(topDet.confidence),
+          coordinates: { lat: topDet.latitude, lng: topDet.longitude, location: 'AI-Geotagged Anomaly' },
+          anomalyConfidence: topDet.confidence / 100,
+          cleanPriority: `P1 – ${result.total_detected} Object(s) Identified`,
+          detections: result.detections.map((d, i) => ({
+            id: d.id,
+            label: d.class,
+            confidence: d.confidence / 100,
+            type: d.class,
+            box: { x: 30 + i * 5, y: 30, w: 25, h: 20 },
+            highlight: { x: 31 + i * 5, y: 32, w: 22, h: 7 },
+            shadow: { x: 31 + i * 5, y: 39, w: 22, h: 11 },
+            estHeight: '—',
+            material: 'AI-Detected Object',
+            acousticReflectivity: `Confidence: ${d.confidence.toFixed(1)}%`
+          }))
+        }));
+      } else {
+        setSelectedSample((prev) => ({
+          ...prev,
+          riskLevel: 'CLEAR',
+          riskScore: 0,
+          cleanPriority: 'No acoustic hazards detected'
+        }));
+      }
+    } catch (err) {
+      console.warn('Backend analysis error:', err);
+      setApiError(err.message || 'Analysis failed');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -113,9 +184,26 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
           <div className="flex items-center gap-3">
             <div className="w-1 h-8 bg-amber-500 rounded-full shrink-0" />
             <div>
-              <h2 className="text-sm font-bold text-white tracking-tight">
-                ACOUSTIC SIGNAL STUDIO &amp; 3D ELEVATION MATH
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-white tracking-tight">
+                  ACOUSTIC SIGNAL STUDIO &amp; 3D ELEVATION MATH
+                </h2>
+                {/* FastAPI Backend Status Badge */}
+                <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                  backendStatus === 'online' ? 'bg-emerald-950/80 border-emerald-700 text-emerald-400' :
+                  backendStatus === 'offline' ? 'bg-amber-950/80 border-amber-700 text-amber-400' :
+                  'bg-neutral-900 border-neutral-700 text-neutral-400'
+                }`}>
+                  {backendStatus === 'online' ? <Wifi className="w-3 h-3 text-emerald-400" /> : <WifiOff className="w-3 h-3 text-amber-400" />}
+                  <span>{backendStatus === 'online' ? 'API ACTIVE' : backendStatus === 'offline' ? 'CLIENT DSP (OFFLINE)' : 'CHECKING...'}</span>
+                </span>
+                {isAnalyzing && (
+                  <span className="flex items-center gap-1 text-[10px] text-cyan-400 font-mono animate-pulse">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Inference running...</span>
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-gray-500 font-mono mt-0.5">
                 Slant-range correction · Lee despeckle · Split-screen inspection · Physical 3D shadow math
               </p>
@@ -123,6 +211,17 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {analysisResult && (
+              <button
+                onClick={downloadLastReportCSV}
+                className="flex items-center gap-1 px-2.5 py-1 bg-emerald-900 hover:bg-emerald-800 border border-emerald-600 text-emerald-200 rounded text-xs font-semibold cursor-pointer transition-colors"
+                title="Download CSV report of detected objects"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export CSV</span>
+              </button>
+            )}
+
             {PRESET_SAMPLES.map(sample => (
               <button
                 key={sample.id}
@@ -139,8 +238,8 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
 
             <label className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-neutral-200 text-black rounded text-xs font-semibold cursor-pointer">
               <UploadCloud className="w-3.5 h-3.5" />
-              <span>Upload Scan</span>
-              <input type="file" accept="image/*,.xtf,.js" onChange={handleFileUpload} className="hidden" />
+              <span>{isAnalyzing ? 'Analyzing...' : 'Upload Scan'}</span>
+              <input type="file" accept="image/*,.xtf,.js" onChange={handleFileUpload} disabled={isAnalyzing} className="hidden" />
             </label>
           </div>
         </div>

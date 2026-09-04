@@ -20,7 +20,8 @@ Optical RGB subsea cameras fail rapidly past shallow depths due to marine snow, 
 
 ## 🏛️ System Architecture
 
-![AeroAqua DeepScan System Architecture Blueprint](public/architecture_diagram.jpg)
+![AeroAqua DeepScan System Architecture Blueprint](frontend/public/architecture_diagram.jpg)
+
 
 ### Algorithmic & Layer Breakdown
 
@@ -73,11 +74,12 @@ Optical RGB subsea cameras fail rapidly past shallow depths due to marine snow, 
 
 ## 🛠️ Tech Stack
 
-- **Frontend & UI**: [React 19](https://react.dev/), [Vite](https://vitejs.dev/), [TailwindCSS v4](https://tailwindcss.com/), [Framer Motion](https://www.framer.motion)
+- **Frontend & UI**: [React 19](https://react.dev/), [Vite 8](https://vitejs.dev/), [TailwindCSS v4](https://tailwindcss.com/), [Framer Motion](https://www.framer.motion)
+- **Backend & AI Inference**: [FastAPI](https://fastapi.tiangolo.com/), [Ultralytics YOLO](https://github.com/ultralytics/ultralytics), [ONNX Runtime](https://onnxruntime.ai/), [OpenCV](https://opencv.org/), [NumPy](https://numpy.org/), [Pandas](https://pandas.pydata.org/), [Streamlit](https://streamlit.io/)
 - **Data Visualization & GIS**: [Chart.js](https://www.chartjs.org/) & [React-ChartJS-2](https://react-chartjs-2.js.org/), [Leaflet](https://leafletjs.com/)
 - **Icons & UI Components**: [Lucide React](https://lucide.dev/), [Canvas Confetti](https://www.npmjs.com/package/canvas-confetti)
 - **Reporting**: [jsPDF](https://github.com/parallax/jsPDF) & [jspdf-autotable](https://github.com/simonbengtsson/jsPDF-AutoTable)
-- **Code Quality**: [Oxlint](https://oxc.rs/)
+- **Code Quality & Testing**: [Oxlint](https://oxc.rs/), [Pytest](https://pytest.org/)
 
 ---
 
@@ -86,35 +88,85 @@ Optical RGB subsea cameras fail rapidly past shallow depths due to marine snow, 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (version 18.x or later recommended)
-- `npm` or `pnpm` or `yarn`
+- [Python](https://www.python.org/) (version 3.10 or later)
+- `npm` and `pip`
 
-### Installation
+### 1. Clone the repository
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/TanayThapar/Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System.git
-   cd Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System
-   ```
+```bash
+git clone https://github.com/TanayThapar/Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System.git
+cd Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System
+```
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+### 2. Install Dependencies
 
-3. **Start the development server**:
-   ```bash
-   npm run dev
-   ```
+**Full-stack in one command:**
+```bash
+npm run install:all
+```
 
-4. **Build for production**:
-   ```bash
-   npm run build
-   ```
+*Or manually:*
+```bash
+# Frontend
+cd frontend && npm install && cd ..
 
-5. **Preview production build**:
-   ```bash
-   npm run preview
-   ```
+# Backend
+cd backend && pip install -r requirements.txt && cd ..
+```
+
+### 3. Running the Application
+
+#### Option A: One-Command Full-Stack Runner
+```bash
+./start.sh
+```
+This boots the FastAPI REST backend at `http://localhost:8000` and Vite React workstation at `http://localhost:5173` simultaneously.
+
+#### Option B: Individual Services
+
+- **FastAPI REST API**:
+  ```bash
+  cd backend
+  python3 fastapi_server.py
+  # API docs live at http://localhost:8000/docs
+  ```
+
+- **Frontend Development Server**:
+  ```bash
+  cd frontend
+  npm run dev
+  # Workstation UI at http://localhost:5173
+  ```
+
+- **Standalone Streamlit Acoustic Lab**:
+  ```bash
+  cd backend
+  streamlit run app.py
+  # Lab UI at http://localhost:8501
+  ```
+
+### 4. Build & Production Deployment
+
+```bash
+# Build optimized frontend bundle
+npm run build:frontend
+
+# Run unified production server (serves both API + React SPA from port 8000)
+npm run start:backend
+```
+
+---
+
+## 📡 REST API Endpoints
+
+The FastAPI backend exposes the following endpoints:
+
+| Method | Endpoint | Description |
+|:---:|:---|:---|
+| `GET` | `/health` | Server status and YOLO ONNX model readiness |
+| `POST` | `/analyze` | Ingests sonar image + telemetry; returns bounding boxes, 3D math, GPS tags, and base64 visualization |
+| `GET` | `/report/csv` | Streams a downloadable CSV export of the latest survey detections |
+| `GET` | `/docs` | Interactive Swagger API documentation |
 
 ---
 
@@ -138,29 +190,46 @@ Optical RGB subsea cameras fail rapidly past shallow depths due to marine snow, 
 ## 📂 Project Structure
 
 ```
-├── public/                 # Static assets and icons
-├── src/
-│   ├── assets/             # Images and acoustic textures
-│   ├── components/         # React modular UI components
-│   │   ├── AnalysisStudio.jsx       # Acoustic highlight/shadow inspection
-│   │   ├── Auv3DCanvas.jsx          # 3D AUV orientation render
-│   │   ├── EdgeMetricsView.jsx      # Jetson Orin NPU benchmarks
-│   │   ├── GeospatialMapView.jsx    # GIS map with Leaflet
-│   │   ├── HardwareSimulatorView.jsx# Subsea AUV hardware telemetry
-│   │   ├── LiveWaterfallView.jsx    # Side-scan sonar waterfall screen
-│   │   ├── ReportGenerator.jsx      # PDF survey export
-│   │   ├── SihPitchGuide.jsx        # SIH project architecture & specs
-│   │   └── SyntheticStudio.jsx      # CycleGAN synthesis pipeline
-│   ├── context/            # Global React context (theme, telemetry state)
-│   ├── data/               # Sonar sample catalogs, survey metrics
-│   ├── utils/              # Calculation helpers & PDF utilities
-│   ├── App.jsx             # Main dashboard layout & router
-│   ├── index.css           # Tailwind styling rules
-│   └── main.jsx            # Application entry point
-├── .gitignore              # Git ignore configuration
-├── package.json            # Project dependencies & scripts
-├── vite.config.js          # Vite configuration
-└── README.md               # Documentation
+Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System/
+├── frontend/                     # React 19 + Vite + Tailwind Workstation
+│   ├── public/                   # Static assets, icons, and architecture blueprint
+│   ├── src/
+│   │   ├── assets/               # Sonar acoustic textures and brand assets
+│   │   ├── components/           # Modular perception & telemetry UI components
+│   │   │   ├── AnalysisStudio.jsx       # Acoustic highlight/shadow inspection & API client
+│   │   │   ├── Auv3DCanvas.jsx          # 3D AUV orientation render
+│   │   │   ├── EdgeMetricsView.jsx      # Jetson Orin NPU benchmarks
+│   │   │   ├── GeospatialMapView.jsx    # Tactical GIS map with Leaflet
+│   │   │   ├── HardwareSimulatorView.jsx# Subsea AUV hardware telemetry
+│   │   │   ├── LiveWaterfallView.jsx    # Dual-channel side-scan sonar waterfall
+│   │   │   ├── ReportGenerator.jsx      # Automated survey PDF export
+│   │   │   ├── SihPitchGuide.jsx        # SIH project architecture & specs
+│   │   │   └── SyntheticStudio.jsx      # CycleGAN synthesis pipeline
+│   │   ├── context/              # Theme and telemetry state context
+│   │   ├── data/                 # Sonar sample catalogs, survey metrics
+│   │   ├── utils/                # API client, 3D shadow math, DSP filters
+│   │   │   ├── api.js            # FastAPI integration client
+│   │   │   └── sonarProcessor.js # DSP canvas rasterizer & elevation calculations
+│   │   ├── App.jsx               # Main dashboard layout & router
+│   │   ├── index.css             # Tailwind v4 theme styling rules
+│   │   └── main.jsx              # Application entry point
+│   ├── package.json              # Frontend dependencies & scripts
+│   └── vite.config.js            # Vite bundler configuration & API proxy
+├── backend/                      # Python FastAPI & AI Perception Engine
+│   ├── app.py                    # Streamlit acoustic analysis lab
+│   ├── fastapi_server.py         # Production FastAPI REST backend + static server
+│   ├── requirements.txt          # Python dependencies
+│   ├── src/                      # Core AI & DSP logic
+│   │   ├── model/                # YOLO-11 ONNX inference engine
+│   │   ├── preprocessing/        # CLAHE, Rayleigh despeckling, slant-range projection
+│   │   └── utils/                # WGS84 Geotagging and 3D elevation math
+│   ├── weights/                  # Pretrained model weights (best.onnx)
+│   ├── scripts/                  # Dataset preparation, training, & evaluation scripts
+│   └── tests/                    # Pytest verification suites
+├── start.sh                      # Full-stack dev runner script
+├── package.json                  # Root monorepo orchestration scripts
+├── .gitignore                    # Global ignore rules
+└── README.md                     # Documentation
 ```
 
 ---
@@ -168,3 +237,4 @@ Optical RGB subsea cameras fail rapidly past shallow depths due to marine snow, 
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+
