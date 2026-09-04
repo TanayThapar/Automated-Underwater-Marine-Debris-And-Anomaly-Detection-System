@@ -249,16 +249,46 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {analysisResult && analysisResult.total_detected > 0 && (
-              <button
-                onClick={downloadLastReportCSV}
-                className="flex items-center gap-1 px-2.5 py-1 bg-emerald-900 hover:bg-emerald-800 border border-emerald-600 text-emerald-200 rounded text-xs font-semibold cursor-pointer transition-colors"
-                title="Download CSV report of detected objects"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export CSV</span>
-              </button>
-            )}
+            {selectedSample?.detections?.length > 0 && !isAnalyzing && (() => {
+              const exportCSV = () => {
+                const dets = selectedSample.detections;
+                const rows = [
+                  ['Detection ID', 'Label', 'Confidence (%)', 'Box X (%)', 'Box Y (%)', 'Box W (%)', 'Box H (%)', 'Est. Height (m)', 'Material / Notes', 'Latitude', 'Longitude', 'Timestamp'],
+                  ...dets.map((d, i) => [
+                    d.id || `DET-${i + 1}`,
+                    d.label || d.type || 'DEBRIS',
+                    ((d.confidence <= 1 ? d.confidence * 100 : d.confidence)).toFixed(1),
+                    d.box?.x ?? '',
+                    d.box?.y ?? '',
+                    d.box?.w ?? '',
+                    d.box?.h ?? '',
+                    d.estHeight || computedHeight,
+                    d.material || d.acousticReflectivity || '',
+                    selectedSample?.coordinates?.lat ?? '',
+                    selectedSample?.coordinates?.lng ?? '',
+                    selectedSample?.timestamp || new Date().toISOString(),
+                  ])
+                ];
+                const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `sonar_detections_${selectedSample?.name?.replace(/\s+/g, '_') || 'report'}_${Date.now()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              };
+              return (
+                <button
+                  onClick={exportCSV}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-emerald-900 hover:bg-emerald-800 border border-emerald-600 text-emerald-200 rounded text-xs font-semibold cursor-pointer transition-colors"
+                  title="Download CSV report of detected objects"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export CSV</span>
+                </button>
+              );
+            })()}
 
             {PRESET_SAMPLES.map(sample => (
               <button
