@@ -3,18 +3,22 @@
 [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-purple.svg)](https://vitejs.dev/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-38bdf8.svg)](https://tailwindcss.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com/)
+[![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-Inference-blue.svg)](https://onnxruntime.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-> **Autonomous Underwater Vehicle (AUV) Side-Scan Sonar Intelligence Pipeline**  
-> AI-Powered perception and telemetry system combining dual-cue object detection, 3D acoustic shadow height profiling, CycleGAN synthetic data augmentation, and sub-20ms edge deployment on hardware simulators.
+> **Autonomous Underwater Vehicle (AUV) Side-Scan Sonar Perception & Analysis Workstation**  
+> An integrated full-stack system combining computer vision anomaly detection, acoustic digital signal processing (DSP), real-world WGS-84 geotagging, interactive waterfall rendering, and hardware telemetry simulation for maritime surveys.
 
 ---
 
 ## 🌊 Overview
 
-Optical RGB subsea cameras fail rapidly past shallow depths due to marine snow, silt, and extreme water turbidity. Traditional hydrographic review of hundreds of kilometers of side-scan sonar waterfall imagery requires tens of hours of manual post-processing, introducing hazardous delays for maritime navigation, pipeline monitoring, and marine debris cleanup.
+Side-scan sonar (SSS) is an essential imaging tool in underwater surveyance, pipeline inspection, and marine debris cleanup, particularly when optical visibility is compromised by depth, turbidity, or silt. Interpreting hours of acoustic waterfall logs manually is time-consuming and error-prone.
 
-**Automated Underwater Marine Debris & Anomaly Detection System** provides an edge-native perception and telemetry workstation designed for AUVs. It inspects specular acoustic highlights and paired acoustic shadows in real time to locate, classify, and physically estimate the 3D dimensions of underwater anomalies.
+This project delivers a complete workstation comprising:
+- **A FastAPI Backend Engine** executing image preprocessing (despeckling, CLAHE, shadow enhancement), ONNX-based deep learning inference, and telemetry-based geographic coordinate projections.
+- **A React 19 Frontend Workstation** providing live acoustic waterfall sweeps, dual-screen signal analysis, interactive geospatial GIS mapping, synthetic sonar generation simulations, and subsea hardware telemetry monitoring.
 
 ---
 
@@ -22,77 +26,95 @@ Optical RGB subsea cameras fail rapidly past shallow depths due to marine snow, 
 
 ![AeroAqua DeepScan System Architecture Blueprint](frontend/public/architecture_diagram.jpg)
 
+### End-to-End Pipeline
 
-### Algorithmic & Layer Breakdown
-
-1. **Physical Sensor & Acoustic Ingestion**:
-   - **Dual-frequency CHIRP Transducers**: 450 kHz (long-range search swath up to 150m) and 900 kHz (ultra-fine target acoustic imaging).
-   - **6-DOF IMU & Doppler Velocity Log (DVL)**: Real-time attitude ingestion (Pitch $\theta_p$, Roll $\theta_r$, Yaw $\psi$) and seabed bottom tracking.
-   - **ROS 2 Humble Bridge**: Deterministic DDS telemetry pub/sub bridge orchestrating ping buffers with microsecond timestamps.
-
-2. **Acoustic Digital Signal Processing (DSP)**:
-   - **Slant-Range to Ground-Range Projection**: Converts raw slant range $R_{\text{slant}}$ into true horizontal seabed distance $Y$:
-     $$Y = \sqrt{R_{\text{slant}}^2 - H_{\text{alt}}^2}$$
-   - **Multiplicative Rayleigh Despeckling**: Eliminates high-frequency backscatter speckle while preserving hard debris highlight edges.
-   - **Contrast-Limited Adaptive Histogram Equalization (CLAHE)**: Prevents noise over-amplification in low-backscatter seabed areas while enhancing weak acoustic shadows.
-   - **Time-Varied Gain (TVG)**: Spherical spreading and sound attenuation compensation $\text{TVG}(R) = 20 \log_{10}(R) + 2\alpha R$.
-   - **6-DOF Kinematic Rectification**: Corrects pitch shear, roll gain asymmetry, and heave nadir modulation dynamically.
-
-3. **Edge AI Perception & Physics Engine**:
-   - **YOLO-11 Dual-Cue Detection**: Jointly detects specular acoustic highlights paired with their down-range acoustic shadows.
-   - **3D Geometric Elevation Equation**: Estimates true target height $H$ above seabed using vehicle pitch/roll angular offsets:
-     $$H = \frac{L_{\text{shadow}} \cdot \left(H_{\text{alt}} \cdot \cos(\theta_p) \cdot \cos(\theta_r)\right)}{R_{\text{slant}} + L_{\text{shadow}}}$$
-   - **PatchCore Unsupervised Anomaly Engine**: Detects rare anomalies and uncataloged debris via a coreset memory bank of mid-level features.
-   - **CycleGAN Acoustic Synthesizer**: Augmented synthetic acoustic texture generator yielding +26.4% mAP gain on rare debris classes.
-   - **TensorRT INT8 Edge Profiling**: Quantized edge pipeline deployed on NVIDIA Jetson Orin Nano / Xavier NX running at **67.5 FPS** with **<18ms** latency.
-
-4. **Tactical GIS & Telemetry Services**:
-   - **60 FPS HTML5 Canvas Waterfall Engine**: Real-time dual-channel acoustic rasterizer with multiple colormaps.
-   - **Tactical Geospatial GIS**: Leaflet mapping with CARTO Dark Matter basemap authentication and WGS84 geodesic projections.
-   - **Incident Dossier**: Auto-generates standard GeoJSON layers and printable PDF survey dossiers.
-
-5. **Workstation UI & Hardware Simulator**:
-   - **3D AUV Dynamic Orientation Canvas**: Real-time attitude visualization reflecting vehicle dynamics.
-   - **Hardware Telemetry Strip**: Monitors thruster PWM, battery discharge curves, transducer frequency, and ping counter telemetry.
-   - **60s Guided Tour & Hotkeys**: Rapid evaluation walkthrough and keyboard hotkey navigation (`1`-`8`, `J`, `Space`, `?`).
+1. **Sonar Log & Image Ingestion**:
+   - Accepts raw side-scan sonar image logs (PNG/JPEG) along with AUV navigation telemetry (latitude, longitude, heading angle, swath width, and altitude).
+2. **Acoustic Preprocessing Pipeline (`backend/src/preprocessing/`)**:
+   - **Rayleigh Speckle Denoising**: Spatial median filtering to suppress acoustic reverberation and backscatter noise while maintaining sharp obstacle boundaries.
+   - **Contrast-Limited Adaptive Histogram Equalization (CLAHE)**: Normalizes gain variations across the sonar scanline without blowing out low-intensity shadow zones.
+   - **Acoustic Shadow Enhancement**: Non-linear gamma curve remapping ($γ = 1.5$) to improve contrast in the acoustic shadow cast by seafloor targets.
+3. **Detection Engine (`backend/src/model/`)**:
+   - Object detection powered by an ONNX runtime session loaded from `weights/best.onnx`.
+   - Classifies acoustic anomalies into maritime hazard categories: Shipwrecks, Ghost Nets, Pipes, Cylinders, and Debris.
+   - Includes automatic graceful fallback to mock mode if weights are unmounted or absent.
+4. **Geotagging & Coordinate Projection (`backend/src/utils/geotag.py`)**:
+   - Converts 2D pixel offsets into metric distances across-track ($X$) and along-track ($Y$) relative to vehicle swath width.
+   - Applies heading rotation and trigonometric geodesy over the WGS-84 coordinate model to compute the latitude and longitude of each detected object.
+5. **Interactive Frontend Presentation (`frontend/src/`)**:
+   - Live waterfall display, 3D shadow elevation calculations, tactical GIS mapping, and mission report generation.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Key Modules & Capabilities
 
-- **Live Sonar Waterfall Display**: High-resolution continuous acoustic waterfall view with port/starboard channel sweeps, real-time gain/contrast adjustments, and bounding box highlights.
-- **Acoustic Analysis Studio**: Deep inspection tool for detected anomalies featuring intensity colormaps, acoustic shadow measurement crosshairs, and 3D elevation profiling using:
-  $$\text{Target Height } (H) = \frac{L_{\text{shadow}} \times H_{\text{altitude}}}{R_{\text{slant}} + L_{\text{shadow}}}$$
-- **Geospatial Tactical Map**: Interactive Leaflet GIS mapping plotting mission survey waypoints, real-time AUV coordinates, detected debris clusters, and hazardous anomalies with GeoJSON export capability.
-- **GAN Synthetic Data Studio**: Synthetic sonar generation simulating turbidity, acoustic speckle noise, and reverberation using CycleGAN pipelines to augment rare submerged object datasets.
-- **Edge NPU Profiling & Telemetry**: Performance benchmarking for edge hardware (NVIDIA Jetson Orin Nano / Xavier NX), monitoring TensorRT INT8 inference latency, FPS throughput, wattage, and temperature.
-- **Hardware Simulator**: Real-time thruster, IMU, depth transducer, and sidescan acoustic transducer simulator for testing mission scenarios.
-- **Mission Intelligence & Report Generation**: One-click generation of hydrographic survey logs and PDF mission reports with threat rankings and spatial tags.
-- **Judge Walkthrough Tour & Hotkey Navigation**: Interactive 60-second evaluation walkthrough and ergonomic keyboard hotkeys (`1`-`8`, `J`, `?`).
+### 1. Frontend Workstation (`frontend/`)
+- **Live Sonar Waterfall (`LiveWaterfallView.jsx`)**:
+  - Continuous dual-channel (port and starboard) acoustic sweep rendering on HTML5 canvas.
+  - Multi-palette rendering: Grayscale, Amber, Emerald, Copper, Inverted, and Turbo colormaps.
+  - Synthesizes dynamic acoustic speckle textures with optional periodic audio sonar ping feedback.
+  - Overlay bounding boxes and acoustic shadow ray markers with adjustable swath range and scroll speeds.
+- **Acoustic Studio & 3D Math (`AnalysisStudio.jsx`)**:
+  - Split-screen comparison slider: Toggle between raw ping inputs and processed DSP outputs in real time.
+  - Interactive target height profiling using acoustic shadow physics:
+    $$\text{Target Height } (H) = \frac{L_{\text{shadow}} \times \left(H_{\text{alt}} \cdot \cos(\theta_{\text{pitch}}) \cdot \cos(\theta_{\text{roll}})\right)}{R_{\text{slant}} + L_{\text{shadow}}}$$
+  - Live backend integration: Directly upload sonar files to the `/analyze` API, view detections with real-world coordinates, and export survey logs to CSV.
+  - Live status indicator reporting backend connection state (`API ACTIVE` vs. `CLIENT DSP`).
+- **Geospatial Tactical Map (`GeospatialMapView.jsx`)**:
+  - Leaflet-powered GIS map using CARTO Dark Matter basemap tiles.
+  - Plots survey path swaths, detected anomaly hotspots, coordinates, and classification tags.
+  - Supports GeoJSON export for interoperability with external GIS software (QGIS, ArcGIS).
+- **Synthetic Sonar Studio (`SyntheticStudio.jsx`)**:
+  - Interactive simulator modeling acoustic backscatter across multiple seafloor sediment types (sand, gravel, mud).
+  - Simulates highlight reflectivity and down-range shadow geometry based on debris dimensions and grazing angles.
+- **Hardware Telemetry & Dynamics Simulator (`HardwareSimulatorView.jsx` & `Auv3DCanvas.jsx`)**:
+  - Interactive 3D wireframe vehicle attitude rendering (pitch, roll, and yaw).
+  - Simulates thruster output, battery voltage drain, board thermals, power draws, and telemetry packet streaming.
+- **Edge NPU Benchmarking (`EdgeMetricsView.jsx`)**:
+  - Comparative performance metrics across FP32, FP16, and INT8 quantizations on embedded architectures (NVIDIA Jetson, Coral TPU).
+- **Mission Intelligence & Reporting (`ReportGenerator.jsx`)**:
+  - Printable and downloadable hydrographic survey dossiers detailing mission stats, vehicle parameters, and detected targets.
+
+### 2. Backend Perception Engine (`backend/`)
+- **FastAPI REST API (`fastapi_server.py`)**:
+  - Production-ready async REST service with CORS support and OpenAPI/Swagger documentation at `/docs`.
+  - Serves static compiled frontend assets directly from `frontend/dist` when available.
+- **Endpoints**:
+  - `GET /health`: Model status, model path, and engine operational mode.
+  - `POST /analyze`: Ingests an image file and navigation telemetry; returns detections, bounding boxes, geographic coordinates, and base64-encoded annotated visualization.
+  - `GET /report/csv`: Generates and streams a CSV report of the latest detection run.
+- **Streamlit Laboratory (`app.py`)**:
+  - Standalone dashboard for offline exploration, side-by-side filter parameter tuning, and image analysis.
+- **Scripts & Training Workflows (`scripts/`)**:
+  - Model evaluation, training utilities (`train.py`, `train_v2.py`), background injection helpers, and benchmark output plots.
+- **Automated Tests (`tests/`)**:
+  - Pytest test suite covering preprocessing filters, image matrix transformations, and geotagging trigonometry.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend & UI**: [React 19](https://react.dev/), [Vite 8](https://vitejs.dev/), [TailwindCSS v4](https://tailwindcss.com/), [Framer Motion](https://www.framer.motion)
-- **Backend & AI Inference**: [FastAPI](https://fastapi.tiangolo.com/), [Ultralytics YOLO](https://github.com/ultralytics/ultralytics), [ONNX Runtime](https://onnxruntime.ai/), [OpenCV](https://opencv.org/), [NumPy](https://numpy.org/), [Pandas](https://pandas.pydata.org/), [Streamlit](https://streamlit.io/)
-- **Data Visualization & GIS**: [Chart.js](https://www.chartjs.org/) & [React-ChartJS-2](https://react-chartjs-2.js.org/), [Leaflet](https://leafletjs.com/)
-- **Icons & UI Components**: [Lucide React](https://lucide.dev/), [Canvas Confetti](https://www.npmjs.com/package/canvas-confetti)
-- **Reporting**: [jsPDF](https://github.com/parallax/jsPDF) & [jspdf-autotable](https://github.com/simonbengtsson/jsPDF-AutoTable)
-- **Code Quality & Testing**: [Oxlint](https://oxc.rs/), [Pytest](https://pytest.org/)
+| Domain | Technologies |
+|:---|:---|
+| **Frontend Framework** | React 19, Vite 8, Framer Motion |
+| **Styling & Icons** | TailwindCSS v4, Lucide React |
+| **Mapping & Charts** | Leaflet, CARTO Basemaps, Chart.js, React-ChartJS-2 |
+| **Backend REST API** | FastAPI, Uvicorn, Pydantic |
+| **Computer Vision & Math** | OpenCV (cv2), NumPy, SciPy |
+| **Inference Runtime** | ONNX Runtime (CPU / CUDA Execution Providers) |
+| **Data Processing & Lab** | Pandas, Pillow, Streamlit |
+| **Testing & Quality** | Pytest, Oxlint |
 
 ---
 
-## 🏁 Quick Start
+## 🏁 Quick Start Guide
 
 ### Prerequisites
+- **Node.js**: v18.x or later
+- **Python**: v3.10 or later
+- Package managers: `npm` and `pip`
 
-- [Node.js](https://nodejs.org/) (version 18.x or later recommended)
-- [Python](https://www.python.org/) (version 3.10 or later)
-- `npm` and `pip`
-
-### 1. Clone the repository
-
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/TanayThapar/Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System.git
 cd Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System
@@ -100,90 +122,100 @@ cd Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System
 
 ### 2. Install Dependencies
 
-**Full-stack in one command:**
+**Option A: Automated Install (Root)**
 ```bash
 npm run install:all
 ```
 
-*Or manually:*
+**Option B: Manual Installation**
 ```bash
-# Frontend
-cd frontend && npm install && cd ..
+# Install frontend packages
+cd frontend
+npm install
+cd ..
 
-# Backend
-cd backend && pip install -r requirements.txt && cd ..
+# Install backend dependencies in your Python environment
+cd backend
+pip install -r requirements.txt
+cd ..
 ```
 
-### 3. Running the Application
+---
 
-#### Option A: One-Command Full-Stack Runner
+## 🖥️ Running the Application
+
+### Option A: Unified Full-Stack Runner
+Launch both the backend API and frontend dev server with a single command:
 ```bash
 ./start.sh
 ```
-This boots the FastAPI REST backend at `http://localhost:8000` and Vite React workstation at `http://localhost:5173` simultaneously.
+- Frontend UI: `http://localhost:5173`
+- Backend REST API: `http://localhost:8000`
+- API Documentation: `http://localhost:8000/docs`
 
-#### Option B: Individual Services
+### Option B: Running Individual Services
 
-- **FastAPI REST API**:
+- **FastAPI REST Backend**:
   ```bash
   cd backend
   python3 fastapi_server.py
-  # API docs live at http://localhost:8000/docs
   ```
 
 - **Frontend Development Server**:
   ```bash
   cd frontend
   npm run dev
-  # Workstation UI at http://localhost:5173
   ```
 
-- **Standalone Streamlit Acoustic Lab**:
+- **Standalone Streamlit Exploration Lab**:
   ```bash
   cd backend
   streamlit run app.py
-  # Lab UI at http://localhost:8501
+  # Access at http://localhost:8501
   ```
 
-### 4. Build & Production Deployment
+---
+
+## 🏗️ Production Build & Unified Serving
+
+Build the frontend client bundle and serve both the API and client from FastAPI:
 
 ```bash
-# Build optimized frontend bundle
+# 1. Compile the React application
 npm run build:frontend
 
-# Run unified production server (serves both API + React SPA from port 8000)
+# 2. Start the FastAPI server (automatically mounts and serves frontend/dist)
 npm run start:backend
 ```
+Access the complete application at `http://localhost:8000`.
 
 ---
 
-## 📡 REST API Endpoints
+## 📡 REST API Reference
 
-The FastAPI backend exposes the following endpoints:
-
-| Method | Endpoint | Description |
-|:---:|:---|:---|
-| `GET` | `/health` | Server status and YOLO ONNX model readiness |
-| `POST` | `/analyze` | Ingests sonar image + telemetry; returns bounding boxes, 3D math, GPS tags, and base64 visualization |
-| `GET` | `/report/csv` | Streams a downloadable CSV export of the latest survey detections |
-| `GET` | `/docs` | Interactive Swagger API documentation |
+| Method | Endpoint | Parameters / Payload | Description |
+|:---:|:---|:---|:---|
+| `GET` | `/health` | None | Returns backend status and ONNX model load state. |
+| `POST` | `/analyze` | `file`: Image (form-data)<br>`vehicle_lat`: float (default 14.5)<br>`vehicle_lon`: float (default 75.5)<br>`heading`: float (default 0.0)<br>`swath_width`: float (default 100.0) | Runs preprocessing, YOLO detection, and geotagging; returns detections, coordinates, and base64 annotated image. |
+| `GET` | `/report/csv` | None | Streams downloadable CSV of the latest detection run. |
+| `GET` | `/docs` | None | Interactive Swagger UI documentation. |
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## ⌨️ Keyboard Shortcuts (Frontend)
 
-| Key | Action |
+| Key | Navigation View |
 |:---:|:---|
-| `1` | Live Sonar Waterfall View |
-| `2` | Acoustic Studio & Analysis |
-| `3` | Geospatial Map View |
-| `4` | GAN Synthesizer Studio |
-| `5` | Edge NPU Telemetry |
-| `6` | Mission Report Generator |
-| `7` | SIH Pitch Proposal Guide |
-| `8` | Hardware Simulator View |
-| `J` | 60-Second Guided Evaluation Tour |
-| `?` | Keyboard Shortcuts Cheat Sheet |
+| `1` | Live Sonar Waterfall Display |
+| `2` | Acoustic Signal Studio & Math |
+| `3` | Geospatial GIS Map |
+| `4` | GAN Synthetic Texture Studio |
+| `5` | Edge NPU Benchmarking |
+| `6` | Mission Incident Report |
+| `7` | SIH Pitch Guide & Specifications |
+| `8` | Subsea Hardware Simulator |
+| `J` | 60-Second Guided Tour |
+| `?` | Keyboard Shortcuts Reference |
 
 ---
 
@@ -191,45 +223,55 @@ The FastAPI backend exposes the following endpoints:
 
 ```
 Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System/
-├── frontend/                     # React 19 + Vite + Tailwind Workstation
-│   ├── public/                   # Static assets, icons, and architecture blueprint
+├── frontend/                     # React 19 Client Application
+│   ├── public/                   # Static icons & system architecture diagram
 │   ├── src/
-│   │   ├── assets/               # Sonar acoustic textures and brand assets
-│   │   ├── components/           # Modular perception & telemetry UI components
-│   │   │   ├── AnalysisStudio.jsx       # Acoustic highlight/shadow inspection & API client
-│   │   │   ├── Auv3DCanvas.jsx          # 3D AUV orientation render
-│   │   │   ├── EdgeMetricsView.jsx      # Jetson Orin NPU benchmarks
-│   │   │   ├── GeospatialMapView.jsx    # Tactical GIS map with Leaflet
-│   │   │   ├── HardwareSimulatorView.jsx# Subsea AUV hardware telemetry
+│   │   ├── assets/               # Sonar image textures & logos
+│   │   ├── components/           # UI Views & modular components
+│   │   │   ├── AnalysisStudio.jsx       # DSP analysis & live API client
+│   │   │   ├── Auv3DCanvas.jsx          # 3D AUV vehicle orientation canvas
+│   │   │   ├── EdgeMetricsView.jsx      # Edge NPU latency & power benchmarks
+│   │   │   ├── GeospatialMapView.jsx    # Leaflet tactical survey map
+│   │   │   ├── HardwareSimulatorView.jsx# Hardware telemetry simulator
 │   │   │   ├── LiveWaterfallView.jsx    # Dual-channel side-scan sonar waterfall
-│   │   │   ├── ReportGenerator.jsx      # Automated survey PDF export
-│   │   │   ├── SihPitchGuide.jsx        # SIH project architecture & specs
-│   │   │   └── SyntheticStudio.jsx      # CycleGAN synthesis pipeline
-│   │   ├── context/              # Theme and telemetry state context
-│   │   ├── data/                 # Sonar sample catalogs, survey metrics
-│   │   ├── utils/                # API client, 3D shadow math, DSP filters
-│   │   │   ├── api.js            # FastAPI integration client
-│   │   │   └── sonarProcessor.js # DSP canvas rasterizer & elevation calculations
-│   │   ├── App.jsx               # Main dashboard layout & router
+│   │   │   ├── ReportGenerator.jsx      # Printable survey dossier
+│   │   │   ├── SihPitchGuide.jsx        # Project specifications & architecture
+│   │   │   └── SyntheticStudio.jsx      # Seafloor acoustic texture generator
+│   │   ├── context/              # Global theme & telemetry state
+│   │   ├── data/                 # Sonar sample catalogs & survey metrics
+│   │   ├── utils/                # Client-side DSP, 3D math & API connector
+│   │   │   ├── api.js            # Centralized FastAPI client
+│   │   │   └── sonarProcessor.js # DSP filters & elevation geometry
+│   │   ├── App.jsx               # Main dashboard container & router
 │   │   ├── index.css             # Tailwind v4 theme styling rules
-│   │   └── main.jsx              # Application entry point
-│   ├── package.json              # Frontend dependencies & scripts
-│   └── vite.config.js            # Vite bundler configuration & API proxy
-├── backend/                      # Python FastAPI & AI Perception Engine
-│   ├── app.py                    # Streamlit acoustic analysis lab
-│   ├── fastapi_server.py         # Production FastAPI REST backend + static server
+│   │   └── main.jsx              # Entry point
+│   ├── package.json              # Frontend package definitions
+│   └── vite.config.js            # Vite bundler config with /api reverse proxy
+├── backend/                      # Python Perception & REST Engine
+│   ├── app.py                    # Streamlit acoustic lab
+│   ├── fastapi_server.py         # FastAPI REST service & static file server
 │   ├── requirements.txt          # Python dependencies
-│   ├── src/                      # Core AI & DSP logic
-│   │   ├── model/                # YOLO-11 ONNX inference engine
-│   │   ├── preprocessing/        # CLAHE, Rayleigh despeckling, slant-range projection
-│   │   └── utils/                # WGS84 Geotagging and 3D elevation math
-│   ├── weights/                  # Pretrained model weights (best.onnx)
-│   ├── scripts/                  # Dataset preparation, training, & evaluation scripts
+│   ├── src/                      # Core backend processing packages
+│   │   ├── model/                # ONNX YOLO inference implementation
+│   │   ├── preprocessing/        # Rayleigh despeckling, CLAHE, shadow enhancement
+│   │   └── utils/                # Trigonometric geotagging engine
+│   ├── weights/                  # Pretrained ONNX model weights (best.onnx)
+│   ├── scripts/                  # Training, data preparation, and evaluation scripts
 │   └── tests/                    # Pytest verification suites
-├── start.sh                      # Full-stack dev runner script
+├── start.sh                      # Full-stack runner shell script
 ├── package.json                  # Root monorepo orchestration scripts
-├── .gitignore                    # Global ignore rules
-└── README.md                     # Documentation
+├── .gitignore                    # Global gitignore configuration
+└── README.md                     # Project documentation
+```
+
+---
+
+## 🧪 Testing
+
+Run backend test suites:
+```bash
+cd backend
+PYTHONPATH=. pytest tests
 ```
 
 ---
@@ -237,4 +279,3 @@ Automated-Underwater-Marine-Debris-And-Anomaly-Detection-System/
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
-
