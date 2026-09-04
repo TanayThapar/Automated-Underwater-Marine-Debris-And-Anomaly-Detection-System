@@ -276,14 +276,23 @@ export default function HardwareSimulatorView() {
     setMetrics(computeMetrics(boardId, powerW, thermalThrottle));
   }, [boardId, powerW, thermalThrottle]);
 
+  // Clear both canvases and kill any in-flight debris target whenever the
+  // board or power budget changes — so switching hardware never leaves a
+  // stale detection box floating over a wiped/blank canvas.
   useEffect(() => {
+    targetRef.current = { active: false, x: 0.5, age: 0, h: 46, spawnTimer: 60 };
+    frameRef.current = 0;
     [rawRef.current, dspRef.current].forEach(c => {
       if (!c) return;
       const ctx = c.getContext('2d');
       ctx.fillStyle = '#050505';
       ctx.fillRect(0, 0, c.width, c.height);
     });
+  }, [boardId, powerW]);
 
+  // Animation loop — only depends on `running` now, so pausing/resuming no
+  // longer re-triggers a canvas wipe as a side effect.
+  useEffect(() => {
     const tick = () => {
       if (running) {
         frameRef.current++;
