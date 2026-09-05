@@ -9,8 +9,7 @@ export const SHORTCUTS = [
   { key: '4', description: 'Jump to GAN Synthetic Simulator' },
   { key: '5', description: 'Jump to Edge Telemetry & Hardware' },
   { key: '6', description: 'Jump to Official Maritime Report' },
-  { key: '7', description: 'Jump to SIH Project Pitch Deck' },
-  { key: '8', description: 'Jump to 3D Hardware Simulator' },
+  { key: '7', description: 'Jump to 3D Hardware Simulator' },
   { key: 'J', description: 'Launch 60-Second Jury Tour Walkthrough' },
   { key: '?', description: 'Toggle Keyboard Shortcut Help' },
   { key: 'Esc', description: 'Close active modal / overlay' }

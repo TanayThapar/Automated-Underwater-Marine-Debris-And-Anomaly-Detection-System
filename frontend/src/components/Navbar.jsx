@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Radar, Layers, MapPin, Sparkles, Cpu, FileText,
-  Compass, Radio, Battery, Zap, Keyboard, AlertTriangle
+  Radio, Battery, Zap, Keyboard, AlertTriangle
 } from 'lucide-react';
 import { SURVEY_STATS } from '../data/sonarSamples';
 import { useTelemetry } from '../context/TelemetryContext';
@@ -13,8 +13,7 @@ const NAV_ITEMS = [
   { id: 'synthetic',  label: 'GAN Synth',   icon: Sparkles,   key: '4' },
   { id: 'edge',       label: 'Edge NPU',    icon: Cpu,        key: '5' },
   { id: 'report',     label: 'Report',      icon: FileText,   key: '6' },
-  { id: 'pitch',      label: 'SIH Pitch',   icon: Compass,    key: '7' },
-  { id: 'hardware',   label: 'HW Simulator',icon: Cpu,        key: '8' },
+  { id: 'hardware',   label: 'HW Simulator',icon: Cpu,        key: '7' },
 ];
 
 export default function Navbar({ activeTab, setActiveTab, onOpenJudgeTour, onOpenShortcuts }) {

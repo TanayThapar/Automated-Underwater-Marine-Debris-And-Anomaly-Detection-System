@@ -57,11 +57,8 @@ function DashboardContent() {
       setActiveTab('report');
       showToast('Hotkey [6]: Mission Report');
     } else if (e.key === '7') {
-      setActiveTab('pitch');
-      showToast('Hotkey [7]: SIH Pitch');
-    } else if (e.key === '8') {
       setActiveTab('hardware');
-      showToast('Hotkey [8]: Hardware Simulator');
+      showToast('Hotkey [7]: Hardware Simulator');
     } else if (e.key === 'j' || e.key === 'J') {
       setIsJudgeTourOpen((prev) => !prev);
     } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
@@ -173,10 +170,6 @@ function DashboardContent() {
 
             {activeTab === 'report' && (
               <ReportGenerator />
-            )}
-
-            {activeTab === 'pitch' && (
-              <SihPitchGuide />
             )}
 
             {activeTab === 'hardware' && (
