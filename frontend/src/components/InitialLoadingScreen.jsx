@@ -5,7 +5,7 @@ import { Radar, Activity, CheckCircle2, ChevronRight } from 'lucide-react';
 const BOOT_LOGS = [
   { text: 'Initializing AUV Side-Scan Acoustic Transducers...', detail: 'Dual-frequency 450/900 kHz array active' },
   { text: 'Establishing GNSS-Denied Inertial Hydro-Acoustic Link...', detail: 'USBL positioning locked (14.5°N, 75.5°E)' },
-  { text: 'Loading ONNX Acoustic Anomaly Detection Weights...', detail: 'YOLO-11 Dual Cue compiled for Edge TensorRT' },
+  { text: 'Loading ONNX Acoustic Anomaly Detection Weights...', detail: 'YOLOv8n Dual Cue compiled for Edge TensorRT' },
   { text: 'Synchronizing Seafloor Bathymetric GIS Heatmaps...', detail: 'Loaded Arabian Sea & Bay of Bengal corridors' },
   { text: 'Deploying Real-Time Slant-Range Correction Filter...', detail: 'Shadow analysis & geometric height estimation ready' },
   { text: 'DeepScan AUV System Initialized & Online', detail: 'Mission parameters verified — All nodes green' }

@@ -22,7 +22,7 @@ export default function SihPitchGuide() {
           </h1>
 
           <p className="text-sm text-zinc-300 leading-relaxed">
-            Real-time Autonomous Underwater Vehicle (AUV) side-scan sonar intelligence pipeline combining YOLO-11 dual-cue object detection, 3D acoustic shadow height estimation, CycleGAN synthetic data augmentation, and sub-20ms TensorRT INT8 edge profiling.
+            Real-time Autonomous Underwater Vehicle (AUV) side-scan sonar intelligence pipeline combining YOLOv8n dual-cue object detection, 3D acoustic shadow height estimation, CycleGAN synthetic data augmentation, and sub-20ms TensorRT INT8 edge profiling.
           </p>
         </div>
       </div>
@@ -45,7 +45,7 @@ export default function SihPitchGuide() {
           </div>
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">Our Solution</h3>
           <p className="text-xs text-zinc-300 leading-relaxed">
-            Edge-native TensorRT INT8 YOLO-11 dual-cue perception model evaluating specular acoustic highlights &amp; 3D shadow lengths on-board AUVs at 67.5 FPS in sub-20ms latency.
+            Edge-native TensorRT INT8 YOLOv8n dual-cue perception model evaluating specular acoustic highlights &amp; 3D shadow lengths on-board AUVs at 67.5 FPS in sub-20ms latency.
           </p>
         </div>
 

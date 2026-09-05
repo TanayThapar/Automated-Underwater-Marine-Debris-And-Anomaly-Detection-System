@@ -193,7 +193,7 @@ function DashboardContent() {
             <span className="text-gray-800">·</span>
             <span>TensorRT INT8</span>
             <span className="text-gray-800">·</span>
-            <span>YOLO-11</span>
+            <span>YOLOv8n</span>
             <span className="text-gray-800">·</span>
             <span>ROS 2 Humble</span>
           </div>

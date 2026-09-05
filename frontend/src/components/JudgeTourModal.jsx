@@ -16,7 +16,7 @@ export const TOUR_STEPS = [
     summary: 'Continuous acoustic ping stream processing with Dual-Cue (Specular Highlight + Acoustic Shadow) AI segmentation.',
     points: [
       'Raw acoustic backscatter ingested at 450/900 kHz.',
-      'Real-time YOLO-11 Dual-Cue detection with acoustic shadow length measurement.',
+      'Real-time YOLOv8n Dual-Cue detection with acoustic shadow length measurement.',
       'Acoustic chirp sound synthesis for real-time operator alerts.'
     ],
     highlightQuote: 'Solves underwater turbidity where optical RGB cameras are completely blind past 20m depth.'
@@ -62,7 +62,7 @@ export const TOUR_STEPS = [
     points: [
       'Solves subsea data scarcity by generating realistic sonar backscatter from 3D meshes.',
       'Adjustable grazing angles, seabed sediment types, and Rayleigh noise levels.',
-      'Increases YOLO-11 detection accuracy by +26.4% mAP on rare hazards.'
+      'Increases YOLOv8n detection accuracy by +26.4% mAP on rare hazards.'
     ],
     highlightQuote: 'Eliminates the multi-million dollar cost of manual sea trials for AI training data.'
   },

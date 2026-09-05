@@ -381,7 +381,7 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
                     aiMode === 'supervised' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'text-gray-500'
                   }`}
                 >
-                  YOLO-11
+                  YOLOv8n
                 </button>
                 <button
                   onClick={() => setAiMode('anomaly_heatmap')}
@@ -642,7 +642,7 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
                   <div className="space-y-2">
                     <div className="p-2 bg-[#0b0f17] rounded border border-gray-800">
                       <div className="flex justify-between mb-1 text-xs">
-                        <span className="text-gray-400">YOLO-11 Dual Detector</span>
+                        <span className="text-gray-400">YOLOv8n Dual Detector</span>
                         <span className="text-white font-bold font-mono">
                           {normConf.toFixed(1)}%
                         </span>

@@ -156,7 +156,7 @@ export default function EdgeMetricsView() {
           <div className="bg-[#0b0f17] border border-gray-800 rounded-md p-3.5 space-y-1.5">
             <span className="text-[10px] text-emerald-400 font-mono font-bold uppercase">NODE 3: TENSORRT NPU</span>
             <p className="font-bold text-white">/edge/detection_boxes</p>
-            <p className="text-zinc-400 text-[11px]">YOLO-11 Dual Highlight-Shadow</p>
+            <p className="text-zinc-400 text-[11px]">YOLOv8n Dual Highlight-Shadow</p>
             <p className="text-[10px] text-emerald-400 font-mono font-bold">14.8 ms (67.5 FPS)</p>
           </div>
 
