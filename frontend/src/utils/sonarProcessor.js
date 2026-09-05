@@ -858,17 +858,29 @@ export async function analyzeSonarImageClientSide(imageElementOrFile, options = 
     const isHighlyHorizontalLinear = (spanCols >= 5 && spanCols >= spanRows * 1.5) || (boxW >= 45 && boxH <= 25);
     const isLinearStructure = isHighlyVerticalLinear || isHighlyHorizontalLinear;
 
+    // Nadir line suppression: the vertical black nadir strip spans full height, is very narrow,
+    // and is centered at ~50% X. Skip it — it is never a real target.
+    const clusterCenterX = ((minC + maxC) / 2) / cellCols * 100;
+    const isNadirCluster = isHighlyVerticalLinear && spanCols <= 2 && clusterCenterX >= 38 && clusterCenterX <= 62 && spanRows >= 6;
+    if (isNadirCluster) continue;
+
     // Context hints from file / survey tags
     const isAircraftContext = nameContext.includes('aircraft') || nameContext.includes('plane') || nameContext.includes('aviation') || nameContext.includes('wing');
     const isPipelineContext = nameContext.includes('pipeline') || nameContext.includes('pipe') || nameContext.includes('cable');
     const isDebrisContext = nameContext.includes('debris') || nameContext.includes('tire') || nameContext.includes('container') || nameContext.includes('drum');
+    const isShipwreckContext = nameContext.includes('shipwreck') || nameContext.includes('wreck') || nameContext.includes('sunken') || nameContext.includes('vessel');
 
     // 1. Aircraft (fuselage + wings, cruciform/delta profile, or aviation signature)
     if (isAircraftContext && (clusterArea >= 4 || boxW >= 18 || boxH >= 18)) {
       detectedClass = 'aircraft';
       confidence = Math.min(98.6, Math.max(88.0, confidence + 5));
     }
-    // 2. Pipeline or Subsea Cable (linear continuous feature spanning across range or track)
+    // 2. Shipwreck (large non-linear structural signature with strong acoustic shadow — or context match)
+    else if (isShipwreckContext && (clusterArea >= 3 || boxW >= 15 || boxH >= 15)) {
+      detectedClass = 'shipwreck';
+      confidence = Math.min(97.8, Math.max(87.0, confidence + 5));
+    }
+    // 3. Pipeline or Subsea Cable (linear continuous feature spanning across range or track)
     else if (isPipelineContext && (isLinearStructure || boxH >= 35 || boxW >= 30)) {
       detectedClass = 'pipeline or cable';
       confidence = Math.min(98.2, Math.max(88.0, confidence + 5));
@@ -876,17 +888,17 @@ export async function analyzeSonarImageClientSide(imageElementOrFile, options = 
       detectedClass = 'pipeline or cable';
       confidence = Math.min(97.5, Math.max(86.0, confidence + 4));
     }
-    // 3. Marine Debris (localized anomaly, man-made container, or tagged debris)
+    // 4. Marine Debris (localized anomaly, man-made container, or tagged debris)
     else if (isDebrisContext && clusterArea <= 16) {
       detectedClass = 'debris';
       confidence = Math.min(96.0, Math.max(82.0, confidence + 3));
     }
-    // 4. Shipwreck (massive non-linear multi-cell structural signature)
-    else if (clusterArea >= 12 && boxW >= 30 && boxH >= 30 && !isLinearStructure) {
+    // 5. Shipwreck (massive non-linear multi-cell structural signature — no filename context needed)
+    else if (clusterArea >= 8 && boxW >= 20 && boxH >= 20 && !isLinearStructure) {
       detectedClass = 'shipwreck';
       confidence = Math.min(97.8, Math.max(86.0, confidence + 5));
     }
-    // 5. Underwater Residual Mound (compact localized seabed rise/mound)
+    // 6. Underwater Residual Mound (compact localized seabed rise/mound)
     else if (clusterArea >= 3 && clusterArea <= 9 && Math.abs(spanRows - spanCols) <= 1) {
       detectedClass = 'underwater residual mound';
       confidence = Math.min(94.0, Math.max(80.0, confidence));
