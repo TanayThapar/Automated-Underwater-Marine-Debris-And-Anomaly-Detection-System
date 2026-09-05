@@ -4,6 +4,7 @@ import {
   Compass, Radio, Battery, Zap, Keyboard, AlertTriangle
 } from 'lucide-react';
 import { SURVEY_STATS } from '../data/sonarSamples';
+import { useTelemetry } from '../context/TelemetryContext';
 
 const NAV_ITEMS = [
   { id: 'waterfall',  label: 'Live Sonar',  icon: Radar,      key: '1' },
@@ -17,6 +18,8 @@ const NAV_ITEMS = [
 ];
 
 export default function Navbar({ activeTab, setActiveTab, onOpenJudgeTour, onOpenShortcuts }) {
+  const { pingsProcessed, batteryPct, criticalHazardsCount } = useTelemetry();
+
   return (
     <header className="sticky top-0 z-50 bg-[#111827] border-b border-gray-800 font-sans">
       <div className="max-w-[1500px] mx-auto px-4 py-0 flex items-center justify-between gap-4 h-14">
@@ -72,20 +75,20 @@ export default function Navbar({ activeTab, setActiveTab, onOpenJudgeTour, onOpe
 
           {/* Live Telemetry Strip */}
           <div className="flex items-center gap-3 text-xs bg-[#0b0f17] px-3 py-1.5 rounded border border-gray-800 font-mono">
-            <div className="flex items-center gap-1.5">
-              <Radio className="w-3 h-3 text-neutral-300" />
+            <div className="flex items-center gap-1.5" title="Acoustic Sonar Pings (Live Transducer Count)">
+              <Radio className="w-3 h-3 text-neutral-300 animate-pulse" />
               <span className="text-gray-500">Pings</span>
-              <span className="text-white font-bold tabular-nums">{SURVEY_STATS.totalPingsProcessed.toLocaleString()}</span>
+              <span className="text-white font-bold tabular-nums">{pingsProcessed.toLocaleString()}</span>
             </div>
             <div className="w-px h-3 bg-gray-700" />
-            <div className="flex items-center gap-1.5">
-              <Battery className="w-3 h-3 text-emerald-400" />
-              <span className="text-emerald-400 font-bold tabular-nums">{SURVEY_STATS.auvBatteryPct}%</span>
+            <div className="flex items-center gap-1.5" title="AUV Subsea Battery Bank Status (Active Discharge Model)">
+              <Battery className={`w-3 h-3 ${batteryPct > 30 ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <span className={`font-bold tabular-nums ${batteryPct > 30 ? 'text-emerald-400' : 'text-amber-400'}`}>{batteryPct.toFixed(1)}%</span>
             </div>
             <div className="w-px h-3 bg-gray-700" />
-            <div className="flex items-center gap-1.5 text-rose-400 font-bold">
+            <div className="flex items-center gap-1.5 text-rose-400 font-bold" title="Critical Navigational & Environmental Hazards">
               <AlertTriangle className="w-3 h-3" />
-              <span>{SURVEY_STATS.criticalHazards} Threat</span>
+              <span>{criticalHazardsCount} {criticalHazardsCount === 1 ? 'Threat' : 'Threats'}</span>
             </div>
           </div>
 

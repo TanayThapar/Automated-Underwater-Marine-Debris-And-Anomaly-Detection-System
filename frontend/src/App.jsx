@@ -15,6 +15,7 @@ import HardwareSimulatorView from './components/HardwareSimulatorView';
 import { PRESET_SAMPLES } from './data/sonarSamples';
 import { Radar, Keyboard } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
+import { TelemetryProvider } from './context/TelemetryContext';
 
 function DashboardContent() {
   const [activeTab, setActiveTab] = useState('waterfall');
@@ -213,7 +214,9 @@ function DashboardContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <DashboardContent />
+      <TelemetryProvider>
+        <DashboardContent />
+      </TelemetryProvider>
     </ThemeProvider>
   );
 }

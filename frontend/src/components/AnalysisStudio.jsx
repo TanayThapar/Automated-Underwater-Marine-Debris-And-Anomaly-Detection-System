@@ -6,9 +6,11 @@ import {
 import { PRESET_SAMPLES, SONAR_PALETTES } from '../data/sonarSamples';
 import { drawSonarCanvas, calculateObjectHeight, calculateGroundRange, analyzeSonarImageClientSide } from '../utils/sonarProcessor';
 import { analyzeSonarImage, checkHealth, downloadLastReportCSV } from '../utils/api';
+import { useTelemetry } from '../context/TelemetryContext';
 
 
 export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
+  const { recordUploadAnalysis } = useTelemetry();
   const canvasRef = useRef(null);
   const rawCanvasRef = useRef(null);
   
@@ -158,47 +160,54 @@ export default function AnalysisStudio({ selectedSample, setSelectedSample }) {
       if (detections && detections.length > 0) {
         const topDet = detections[0];
         const confPercent = topDet.confidence <= 1 ? topDet.confidence * 100 : topDet.confidence;
-        setSelectedSample((prev) => ({
-          ...prev,
+        const newDetections = detections.map((d, i) => {
+          const c = d.confidence <= 1 ? d.confidence * 100 : d.confidence;
+          const b = d.box || (Array.isArray(d.bbox) ? {
+            x: Math.round((d.bbox[0] / 640) * 100),
+            y: Math.round((d.bbox[1] / 640) * 100),
+            w: Math.round(((d.bbox[2] - d.bbox[0]) / 640) * 100),
+            h: Math.round(((d.bbox[3] - d.bbox[1]) / 640) * 100),
+          } : { x: 30 + i * 5, y: 30, w: 25, h: 20 });
+
+          return {
+            id: d.id || `DET-${i + 1}`,
+            label: (d.class || d.label || 'DEBRIS').toUpperCase(),
+            confidence: c / 100,
+            type: d.class || d.type || 'debris',
+            box: b,
+            highlight: d.highlight || { x: b.x + 2, y: b.y + 2, w: Math.round(b.w * 0.8), h: Math.round(b.h * 0.45) },
+            shadow: d.shadow || { x: b.x + 2, y: b.y + Math.round(b.h * 0.5), w: Math.round(b.w * 0.8), h: Math.round(b.h * 0.5) },
+            estHeight: d.estHeight || '2.4 m',
+            material: d.material || 'Acoustically Verified Target',
+            acousticReflectivity: d.acousticReflectivity || `Confidence: ${c.toFixed(1)}%`
+          };
+        });
+
+        const updatedSample = {
+          ...customSample,
           riskLevel: confPercent > 85 ? 'CRITICAL' : 'HIGH',
           riskScore: Math.round(confPercent),
           coordinates: { lat: topDet.latitude || 15.3, lng: topDet.longitude || 73.8, location: 'AI-Geotagged Anomaly' },
           anomalyConfidence: confPercent / 100,
           cleanPriority: `P1 – ${totalDetected} Object(s) Identified`,
           description: `AI & acoustic DSP pipeline detected ${totalDetected} target(s) with acoustic highlight/shadow signatures.`,
-          detections: detections.map((d, i) => {
-            const c = d.confidence <= 1 ? d.confidence * 100 : d.confidence;
-            const b = d.box || (Array.isArray(d.bbox) ? {
-              x: Math.round((d.bbox[0] / 640) * 100),
-              y: Math.round((d.bbox[1] / 640) * 100),
-              w: Math.round(((d.bbox[2] - d.bbox[0]) / 640) * 100),
-              h: Math.round(((d.bbox[3] - d.bbox[1]) / 640) * 100),
-            } : { x: 30 + i * 5, y: 30, w: 25, h: 20 });
+          detections: newDetections,
+        };
 
-            return {
-              id: d.id || `DET-${i + 1}`,
-              label: (d.class || d.label || 'DEBRIS').toUpperCase(),
-              confidence: c / 100,
-              type: d.class || d.type || 'debris',
-              box: b,
-              highlight: d.highlight || { x: b.x + 2, y: b.y + 2, w: Math.round(b.w * 0.8), h: Math.round(b.h * 0.45) },
-              shadow: d.shadow || { x: b.x + 2, y: b.y + Math.round(b.h * 0.5), w: Math.round(b.w * 0.8), h: Math.round(b.h * 0.5) },
-              estHeight: d.estHeight || '2.4 m',
-              material: d.material || 'Acoustically Verified Target',
-              acousticReflectivity: d.acousticReflectivity || `Confidence: ${c.toFixed(1)}%`
-            };
-          })
-        }));
+        setSelectedSample(updatedSample);
+        recordUploadAnalysis(updatedSample);
       } else {
-        setSelectedSample((prev) => ({
-          ...prev,
+        const clearedSample = {
+          ...customSample,
           riskLevel: 'CLEAR',
           riskScore: 0,
           anomalyConfidence: 0,
           cleanPriority: 'No acoustic hazards detected',
           description: 'Acoustic scan analysis completed — seabed appears homogeneous with no significant anomalies.',
           detections: [],
-        }));
+        };
+        setSelectedSample(clearedSample);
+        recordUploadAnalysis(clearedSample);
       }
     } catch (err) {
       console.warn('Analysis pipeline error:', err);

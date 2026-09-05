@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Printer, ShieldCheck, Download } from 'lucide-react';
-import { PRESET_SAMPLES, SURVEY_STATS } from '../data/sonarSamples';
+import { PRESET_SAMPLES } from '../data/sonarSamples';
+import { useTelemetry } from '../context/TelemetryContext';
 
 export default function ReportGenerator() {
+  const { pingsProcessed, criticalHazardsCount, totalDebrisCount } = useTelemetry();
   const [reportDate] = useState('2026-08-26');
   const [missionName] = useState('DeepScan-Alpha-Coastal-Survey-2026');
   const [surveyorOrg] = useState('National Institute of Oceanography (NIO) / Indian Coast Guard');
@@ -68,15 +70,15 @@ export default function ReportGenerator() {
           </div>
           <div>
             <span className="text-zinc-500 text-[10px] block font-sans uppercase">ACOUSTIC PINGS</span>
-            <span className="text-base font-bold text-white">{SURVEY_STATS.totalPingsProcessed}</span>
+            <span className="text-base font-bold text-white">{pingsProcessed.toLocaleString()}</span>
           </div>
           <div>
             <span className="text-zinc-500 text-[10px] block font-sans uppercase">HAZARDS IDENTIFIED</span>
-            <span className="text-base font-bold text-amber-400">{PRESET_SAMPLES.length} TARGETS</span>
+            <span className="text-base font-bold text-amber-400">{totalDebrisCount} TARGETS</span>
           </div>
           <div>
             <span className="text-zinc-500 text-[10px] block font-sans uppercase">CRITICAL PRIORITY</span>
-            <span className="text-base font-bold text-rose-400">{SURVEY_STATS.criticalHazards} THREATS</span>
+            <span className="text-base font-bold text-rose-400">{criticalHazardsCount} THREATS</span>
           </div>
         </div>
 
