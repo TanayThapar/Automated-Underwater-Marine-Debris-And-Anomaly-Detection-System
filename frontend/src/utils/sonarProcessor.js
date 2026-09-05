@@ -858,17 +858,39 @@ export async function analyzeSonarImageClientSide(imageElementOrFile, options = 
     const isHighlyHorizontalLinear = (spanCols >= 5 && spanCols >= spanRows * 1.5) || (boxW >= 45 && boxH <= 25);
     const isLinearStructure = isHighlyVerticalLinear || isHighlyHorizontalLinear;
 
+    // --- SSS Nadir Line Suppression ---
+    // The nadir line in side-scan sonar is a pure black vertical stripe at image center.
+    // It appears as a tall, narrow cluster centered around X=50%. Suppress it to avoid
+    // false pipeline/cable detections.
+    const clusterCenterX = boxX + boxW / 2;
+    const isNadirLine = isHighlyVerticalLinear
+      && clusterCenterX >= 38 && clusterCenterX <= 62  // near image center
+      && spanRows >= 8                                  // spans most of the image height
+      && spanCols <= 2;                                 // very narrow (1-2 cells wide)
+    if (isNadirLine) continue;
+
     // Context hints from file / survey tags
     const isAircraftContext = nameContext.includes('aircraft') || nameContext.includes('plane') || nameContext.includes('aviation') || nameContext.includes('wing');
     const isPipelineContext = nameContext.includes('pipeline') || nameContext.includes('pipe') || nameContext.includes('cable');
     const isDebrisContext = nameContext.includes('debris') || nameContext.includes('tire') || nameContext.includes('container') || nameContext.includes('drum');
+    const isGhostNetContext = nameContext.includes('ghost') || nameContext.includes('net') || nameContext.includes('gillnet') || nameContext.includes('trawl') || nameContext.includes('nylon');
+
+    // Ghost net acoustic signature: diffuse irregular scatter, non-linear, moderately large, low-to-mid confidence
+    // Appears as a fluffy/tangled bright blob — NOT a clean rectangle like a container or UXO
+    const isDiffuseScatter = cluster.some(cell => cell.shadowFraction > 0.15 && cell.brightFraction < 0.6);
+    const isGhostNetMorphology = !isLinearStructure && clusterArea >= 3 && clusterArea <= 20 && isDiffuseScatter;
 
     // 1. Aircraft (fuselage + wings, cruciform/delta profile, or aviation signature)
     if (isAircraftContext && (clusterArea >= 4 || boxW >= 18 || boxH >= 18)) {
       detectedClass = 'aircraft';
       confidence = Math.min(98.6, Math.max(88.0, confidence + 5));
     }
-    // 2. Pipeline or Subsea Cable (linear continuous feature spanning across range or track)
+    // 2. Ghost Net (tangled synthetic netting — diffuse scatter blob, non-rigid, irregular)
+    else if (isGhostNetContext || isGhostNetMorphology) {
+      detectedClass = 'ghost net';
+      confidence = Math.min(97.5, Math.max(84.0, confidence + 4));
+    }
+    // 3. Pipeline or Subsea Cable (linear continuous feature spanning across range or track)
     else if (isPipelineContext && (isLinearStructure || boxH >= 35 || boxW >= 30)) {
       detectedClass = 'pipeline or cable';
       confidence = Math.min(98.2, Math.max(88.0, confidence + 5));
