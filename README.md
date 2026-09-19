@@ -78,7 +78,7 @@ At the class level, the detector distinguishes the following anomaly categories:
 
 
 <p align="center">
-  <img src="asset/WhatsApp Image 2026-09-04 at 11.32.45 PM.jpeg" width="700"/>
+  <img src="asset/WhatsApp Image 2026-09-05 at 3.39.21 PM.jpeg" width="700"/>
 </p>
 
 
